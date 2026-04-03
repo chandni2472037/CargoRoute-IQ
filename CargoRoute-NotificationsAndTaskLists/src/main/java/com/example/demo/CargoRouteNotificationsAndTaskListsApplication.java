@@ -7,20 +7,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
-public class CargoRouteIamApplication {
+public class CargoRouteNotificationsAndTaskListsApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CargoRouteIamApplication.class, args);
+		SpringApplication.run(CargoRouteNotificationsAndTaskListsApplication.class, args);
 	}
-	
 	
 	@Bean
 	@LoadBalanced
 	public RestTemplate getRestTemplate() {
 		return new RestTemplate();
 	}
-	
 
 }
-
-

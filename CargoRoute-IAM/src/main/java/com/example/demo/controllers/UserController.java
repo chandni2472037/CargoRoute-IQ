@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.DTO.UserDTO;
+import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.UserService;
 
 @RestController
@@ -16,6 +17,7 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    UserRepository usersRepository;
 
     // CREATE / UPDATE USER (ADMIN)
     @PostMapping("/register")
@@ -40,4 +42,6 @@ public class UserController {
         UserDTO user = userService.getUserById(id);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
+    
+
 }
