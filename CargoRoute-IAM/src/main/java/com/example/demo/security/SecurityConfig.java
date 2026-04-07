@@ -13,15 +13,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    /**
-     * JWT filter to validate token and set SecurityContext
-     */
     private final JwtFilter jwtFilter;
 
     public SecurityConfig(JwtFilter jwtFilter) {
         this.jwtFilter = jwtFilter;
     }
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -31,29 +28,23 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-            // Stateless JWT → CSRF disabled
+            .cors(org.springframework.security.config.Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
-
             .authorizeHttpRequests(auth -> auth
 
-                // Authentication endpoints
+                // Auth endpoints
                 .requestMatchers("/auth/**").permitAll()
 
-                // INTERNAL SERVICE‑TO‑SERVICE CALLS
+                // Internal calls
                 .requestMatchers("/internal/**").permitAll()
 
-
-                // User management → ADMIN only
+                // Admin only
                 .requestMatchers("/users/**").hasRole("Admin")
-
-                // Audit logs → ADMIN only
                 .requestMatchers("/auditlogs/**").hasRole("Admin")
 
-                // Everything else must be authenticated
+                // Everything else
                 .anyRequest().authenticated()
             )
-
-            // JWT validation before Spring Security
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
