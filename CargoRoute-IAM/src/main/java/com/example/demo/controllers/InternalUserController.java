@@ -10,7 +10,7 @@ import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.repositories.UserRepository;
 
 @RestController
-@RequestMapping("/internal")
+@RequestMapping("/cargoRoute/internal")
 public class InternalUserController {
 
     private final UserRepository repo;

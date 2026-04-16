@@ -12,7 +12,7 @@ import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.UserService;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/cargoRoute/user")
 public class UserController {
 
     @Autowired
@@ -28,7 +28,7 @@ public class UserController {
     }
 
     // GET ALL USERS (ADMIN)
-    @GetMapping
+    @GetMapping("/getAllUsers")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
 
         List<UserDTO> users = userService.getAllUsers();

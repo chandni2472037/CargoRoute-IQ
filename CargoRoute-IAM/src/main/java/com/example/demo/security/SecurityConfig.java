@@ -33,14 +33,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
                 // Auth endpoints
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/cargoRoute/auth/**").permitAll()
 
                 // Internal calls
-                .requestMatchers("/internal/**").permitAll()
+                .requestMatchers("/cargoRoute/internal/**").permitAll()
 
                 // Admin only
-                .requestMatchers("/users/**").hasRole("Admin")
-                .requestMatchers("/auditlogs/**").hasRole("Admin")
+                .requestMatchers("/cargoRoute/users/**").hasRole("Admin")
+                .requestMatchers("/cargoRoute/auditLogs/**").hasRole("Admin")
 
                 // Everything else
                 .anyRequest().authenticated()
