@@ -17,6 +17,7 @@ public class ExceptionRecordDTO {
     private ExceptionStatus status;
     private Long bookingId;
     
+    
     public Long getExceptionID() {
         return exceptionID;
     }

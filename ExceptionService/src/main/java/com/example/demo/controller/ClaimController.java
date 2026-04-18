@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import java.util.List;
-
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,60 +12,60 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.ClaimDTO;
 import com.example.demo.entity.enums.ClaimStatus;
+import com.example.demo.exception.BadRequestException;
 import com.example.demo.service.ClaimService;
 
-@RestController // Marks this as a REST controller (methods return JSON objects)
-@RequestMapping("/claims") // Base path for all Claim-related endpoints
+@RestController
+@RequestMapping("/cargoRoute/claim")
 public class ClaimController {
 
     @Autowired
-    private ClaimService service; // Injects the ClaimService to handle business logic
+    private ClaimService service;
 
-    @PostMapping
+    @PostMapping("/addClaim")
     // Create a new Claim record
-    public ResponseEntity<ClaimDTO> addClaim(@RequestBody ClaimDTO c) {
-        ClaimDTO saved = service.createClaim(c); // Delegate creation to service layer
-        return new ResponseEntity<>(saved, HttpStatus.CREATED); // Respond with 201 Created
+    public ResponseEntity<Map<String, String>> addClaim(@RequestBody ClaimDTO c) {
+        service.createClaim(c);
+        return new ResponseEntity<>(Map.of("message", "Claim filed successfully."), HttpStatus.CREATED);
     }
 
-    @GetMapping
-    // Retrieve all Claim records with exception details
+    @GetMapping("/getClaims")
+    // Retrieve all Claim records
     public ResponseEntity<List<ClaimDTO>> fetchAllClaims() {
-        return ResponseEntity.ok(service.getAllClaims()); // 200 OK with list of claims
+        return ResponseEntity.ok(service.getAllClaims());
     }
 
-    @GetMapping("/{id}")
-    // Retrieve a specific Claim by ID with exception details
+    @GetMapping("/getClaimByID/{id}")
+    // Retrieve a specific Claim by ID
     public ResponseEntity<ClaimDTO> fetchClaimById(@PathVariable Long id) {
-        ClaimDTO claim = service.getClaimById(id); // Fetch record
-        return ResponseEntity.ok(claim); // Return 200 OK if found
+        return ResponseEntity.ok(service.getClaimById(id));
     }
 
-    
-    @PatchMapping("/{id}/status")
-    // Update **only** the status field of the Claim
-    public ResponseEntity<ClaimDTO> modifyClaimStatus(@PathVariable Long id, @RequestParam ClaimStatus status) { // Accept status as query parameter
-        
-        ClaimDTO updated = service.updateClaimStatus(id, status); // Delegate update to service
-        return ResponseEntity.ok(updated); // 200 OK with updated claim
+    @PatchMapping("/updateClaimStatus/{id}")
+    // Update only the status field of the Claim
+    public ResponseEntity<Map<String, String>> modifyClaimStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String statusValue = body.get("status");
+        if (statusValue == null || statusValue.isBlank()) {
+            throw new BadRequestException("Status field is required in the request body.");
+        }
+        ClaimStatus status = ClaimStatus.fromValue(statusValue);
+        service.updateClaimStatus(id, status);
+        return ResponseEntity.ok(Map.of("message", "Claim status updated successfully."));
     }
 
-    @GetMapping("/exception/{exceptionId}")
-    // Retrieve all claims for a specific exception with exception details
+    @GetMapping("/getClaimByExceptionID/{exceptionId}")
+    // Retrieve all claims for a specific exception
     public ResponseEntity<List<ClaimDTO>> fetchClaimByExceptionId(@PathVariable Long exceptionId) {
-        List<ClaimDTO> claims = service.getClaimByExceptionId(exceptionId);
-        return ResponseEntity.ok(claims); // 200 OK with list of claims
+        return ResponseEntity.ok(service.getClaimByExceptionId(exceptionId));
     }
 
-    @GetMapping("/status/{status}")
+    @GetMapping("/getClaimByStatus/{status}")
     // Retrieve all claims by status
     public ResponseEntity<List<ClaimDTO>> fetchByClaimStatus(@PathVariable ClaimStatus status) {
-        List<ClaimDTO> claims = service.getClaimByStatus(status);
-        return ResponseEntity.ok(claims); // 200 OK with list of claims
+        return ResponseEntity.ok(service.getClaimByStatus(status));
     }
 }

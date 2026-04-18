@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import java.util.List;
-
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,61 +12,73 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.ExceptionRecordDTO;
 import com.example.demo.dto.RequiredResponseDTO;
 import com.example.demo.entity.enums.ExceptionStatus;
+import com.example.demo.exception.BadRequestException;
 import com.example.demo.service.ExceptionService;
 
 @RestController 
-@RequestMapping("/exceptions") 
+@RequestMapping("/cargoRoute/exception") 
 public class ExceptionController {
 
     @Autowired
     private ExceptionService service; 
 
-    @PostMapping
+    @PostMapping("/addException")
     // Create a new ExceptionRecord
-    public ResponseEntity<ExceptionRecordDTO> addException(@RequestBody ExceptionRecordDTO e) {
-        ExceptionRecordDTO saved = service.createException(e); 
-        return new ResponseEntity<>(saved, HttpStatus.CREATED); 
+    public ResponseEntity<Map<String, String>> addException(@RequestBody ExceptionRecordDTO e) {
+        service.createException(e);
+        return new ResponseEntity<>(Map.of("message", "Exception reported successfully."), HttpStatus.CREATED);
     }
 
-    @GetMapping
+    @GetMapping("/getExceptions")
     // Retrieve all ExceptionRecord entries
     public ResponseEntity<List<RequiredResponseDTO>> fetchAllExceptions() {
-        return ResponseEntity.ok(service.getAllExceptions()); // 200 OK with the list of exceptions
+        return ResponseEntity.ok(service.getAllExceptions());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/getExceptionByID/{id}")
     // Retrieve a single ExceptionRecord by ID with booking details
     public ResponseEntity<RequiredResponseDTO> fetchExceptionById(@PathVariable Long id) {
-        RequiredResponseDTO exception = service.getExceptionById(id); // Service returns entity or throws exception
-        return new ResponseEntity<>(exception,HttpStatus.OK); // 200 OK if found
+        if (id == null || id <= 0) {
+            throw new BadRequestException("Exception ID must be a positive number.");
+        }
+        RequiredResponseDTO exception = service.getExceptionById(id);
+        return new ResponseEntity<>(exception, HttpStatus.OK);
     }
 
-  
-    
-    @PatchMapping("/{id}/status")
+    @PatchMapping("/updateExceptionStatus/{id}")
     // Partially update the exception: only the status field
-    public ResponseEntity<ExceptionRecordDTO> modifyExceptionStatus(@PathVariable Long id, @RequestParam ExceptionStatus status) {
-        ExceptionRecordDTO updated = service.updateExceptionStatus(id, status); // Delegate status change to service
-        return ResponseEntity.ok(updated); // 200 OK with updated exception
+    public ResponseEntity<Map<String, String>> modifyExceptionStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        if (id == null || id <= 0) {
+            throw new BadRequestException("Exception ID must be a positive number.");
+        }
+        String statusValue = body.get("status");
+        if (statusValue == null || statusValue.isBlank()) {
+            throw new BadRequestException("Status field is required in the request body.");
+        }
+        ExceptionStatus status = ExceptionStatus.fromValue(statusValue);
+        service.updateExceptionStatus(id, status);
+        return ResponseEntity.ok(Map.of("message", "Exception status updated successfully."));
     }
 
-    @GetMapping("/booking/{bookingId}")
+    @GetMapping("/getExceptionByBookingID/{bookingId}")
     // Retrieve all exceptions for a specific booking with booking details
     public ResponseEntity<List<RequiredResponseDTO>> fetchExceptionByBookingId(@PathVariable Long bookingId) {
+        if (bookingId == null || bookingId <= 0) {
+            throw new BadRequestException("Booking ID must be a positive number.");
+        }
         List<RequiredResponseDTO> exceptions = service.getExceptionByBookingId(bookingId);
-        return ResponseEntity.ok(exceptions); // 200 OK with list of exceptions
+        return ResponseEntity.ok(exceptions);
     }
 
-    @GetMapping("/status/{status}")
+    @GetMapping("/getExceptionByStatus/{status}")
     // Retrieve all exceptions by status
     public ResponseEntity<List<RequiredResponseDTO>> fetchExceptionByStatus(@PathVariable ExceptionStatus status) {
         List<RequiredResponseDTO> exceptions = service.getExceptionByStatus(status);
-        return ResponseEntity.ok(exceptions); // 200 OK with list of exceptions
+        return ResponseEntity.ok(exceptions);
     }
 }

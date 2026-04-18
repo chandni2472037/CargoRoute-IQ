@@ -1,6 +1,9 @@
 package com.example.demo.service;
 
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.dto.BookingDTO;
 import com.example.demo.entity.enums.BookingStatus;
@@ -26,5 +29,6 @@ public interface BookingService {
     // Retrieve bookings by shipper ID
     public List<BookingDTO> getByShipperId(Long shipperID);
 
-   
+    // Bulk import bookings from a CSV file
+    public Map<String, Object> importBookings(MultipartFile file) throws Exception;
 }

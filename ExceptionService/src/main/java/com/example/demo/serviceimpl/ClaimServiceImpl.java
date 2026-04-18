@@ -32,8 +32,20 @@ public class ClaimServiceImpl implements ClaimService {
 
     // Save a new Claim or update an existing one
     public ClaimDTO createClaim(ClaimDTO dto){
+        if (dto == null) {
+            throw new com.example.demo.exception.BadRequestException("Claim request body must not be null");
+        }
         if (dto.getExceptionID() == null) {
             throw new com.example.demo.exception.BadRequestException("Exception ID is required");
+        }
+        if (dto.getFiledBy() == null || dto.getFiledBy().trim().isEmpty()) {
+            throw new com.example.demo.exception.BadRequestException("Filed by field is required");
+        }
+        if (dto.getAmountClaimed() == null || dto.getAmountClaimed() <= 0) {
+            throw new com.example.demo.exception.BadRequestException("Amount claimed must be a positive number");
+        }
+        if (dto.getStatus() == null) {
+            dto.setStatus(com.example.demo.entity.enums.ClaimStatus.OPEN);
         }
         Claim claim = convertToEntity(dto);
         Claim saved = repo.save(claim);

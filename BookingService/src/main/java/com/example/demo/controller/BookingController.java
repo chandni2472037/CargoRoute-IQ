@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import java.util.List;
-
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,60 +14,67 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.dto.BookingDTO;
 import com.example.demo.entity.enums.BookingStatus;
 import com.example.demo.service.BookingService;
 
 @RestController 
-@RequestMapping("/bookings") 
+@RequestMapping("/cargoRoute/booking") 
 public class BookingController {
 
     @Autowired
     private BookingService service; 
 
-    @PostMapping
-    public ResponseEntity<BookingDTO> addBooking(@RequestBody BookingDTO b) {
-        BookingDTO savedBooking = service.createBooking(b); // Delegate saving to service layer
-        return new ResponseEntity<>(savedBooking, HttpStatus.CREATED); // 201 Created response
+    @PostMapping("/addBooking")
+    public ResponseEntity<Map<String, String>> addBooking(@RequestBody BookingDTO b) {
+        service.createBooking(b);
+        return new ResponseEntity<>(Map.of("message", "Booking created successfully."), HttpStatus.CREATED);
     }
 
-    @GetMapping
+    @GetMapping("/getBookings")
     public ResponseEntity<List<BookingDTO>> fetchAllBookings() {
-        List<BookingDTO> bookings = service.getAllBookings(); // Fetch list from service
-        return ResponseEntity.ok(bookings); // 200 OK with list
-    }
-    
-    @GetMapping("/{id}")
-    public ResponseEntity<BookingDTO> getByBookingId(@PathVariable Long id) {
-        BookingDTO booking = service.getBookingById(id); // Fetch by ID
-        return (booking != null)
-                ? ResponseEntity.ok(booking) // 200 OK if found
-                : ResponseEntity.notFound().build(); // 404 Not Found if not
-    }
-    
-    
-    
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<BookingDTO> modifyBookingStatus( @PathVariable Long id, @RequestParam BookingStatus status) { // Pass status as request param
-        
-        BookingDTO updated = service.updateBookingStatus(id, status); // Delegate to service
-        if (updated != null) {
-            return ResponseEntity.ok(updated); // 200 OK with updated booking
-        }
-        return ResponseEntity.notFound().build(); // 404 if booking not found
+        List<BookingDTO> bookings = service.getAllBookings();
+        return ResponseEntity.ok(bookings);
     }
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<BookingDTO>> fetcgByBookingStatus(@PathVariable BookingStatus status) {
+    @GetMapping("/getBookingById/{id}")
+    public ResponseEntity<BookingDTO> getByBookingId(@PathVariable Long id) {
+        BookingDTO booking = service.getBookingById(id);
+        return ResponseEntity.ok(booking);
+    }
+
+    @PatchMapping("/updateBookingStatus/{id}")
+    public ResponseEntity<Map<String, String>> modifyBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String statusValue = body.get("status");
+        if (statusValue == null || statusValue.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Status field is required in the request body."));
+        }
+        BookingStatus status = BookingStatus.fromValue(statusValue);
+        service.updateBookingStatus(id, status);
+        return ResponseEntity.ok(Map.of("message", "Booking status updated successfully."));
+    }
+
+    @GetMapping("/getBookingsByStatus/{status}")
+    public ResponseEntity<List<BookingDTO>> fetchByBookingStatus(@PathVariable BookingStatus status) {
         List<BookingDTO> bookings = service.getByBookingStatus(status);
         return ResponseEntity.ok(bookings);
     }
 
-    @GetMapping("/shipper/{shipperId}")
+    @GetMapping("/getBookingsByShipperID/{shipperId}")
     public ResponseEntity<List<BookingDTO>> getByShipperId(@PathVariable Long shipperId) {
         List<BookingDTO> bookings = service.getByShipperId(shipperId);
         return ResponseEntity.ok(bookings);
     }
- 
+
+    @PostMapping("/importBookings")
+    public ResponseEntity<Map<String, Object>> importBookings(@RequestParam("file") MultipartFile file) {
+        try {
+            Map<String, Object> result = service.importBookings(file);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }         
