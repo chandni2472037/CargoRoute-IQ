@@ -1,0 +1,25 @@
+package com.example.demo.service;
+import java.util.List;
+import com.example.demo.dto.ProofOfDeliveryDTO;
+import com.example.demo.dto.ProofOfDeliveryResponseDTO;
+import com.example.demo.entities.enums.PodType;
+import com.example.demo.entities.enums.ProofOfDeliveryStatus;
+
+public interface ProofOfDeliveryService {
+
+    ProofOfDeliveryDTO create(ProofOfDeliveryDTO proofOfDeliveryDTO);
+
+    ProofOfDeliveryResponseDTO getById(Long podID);
+
+    List<ProofOfDeliveryResponseDTO> getAll();
+
+    ProofOfDeliveryResponseDTO getByBookingID(Long bookingID);
+
+    List<ProofOfDeliveryResponseDTO> getByPodType(PodType podType);
+
+    List<ProofOfDeliveryResponseDTO> getByProofOfDeliveryStatus(ProofOfDeliveryStatus status);
+
+    ProofOfDeliveryDTO update(Long podID, ProofOfDeliveryDTO proofOfDeliveryDTO);
+
+    void delete(Long podID);
+}
