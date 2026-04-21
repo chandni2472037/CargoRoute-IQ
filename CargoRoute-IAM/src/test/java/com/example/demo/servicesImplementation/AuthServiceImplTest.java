@@ -96,12 +96,12 @@ class AuthServiceImplTest {
         User user = new User(1L, "John", UserRole.Admin, "john@mail.com", "999", "Active", "encoded");
         when(repo.findByEmail("john@mail.com")).thenReturn(user);
         when(encoder.matches("raw", "encoded")).thenReturn(true);
-        when(jwtUtil.generateToken("john@mail.com", "Admin")).thenReturn("jwt-token");
+        when(jwtUtil.generateToken("john@mail.com", "Admin", 1L)).thenReturn("jwt-token");
 
         AuthResponseDTO response = service.login(request);
 
         assertEquals("jwt-token", response.getToken());
-        verify(jwtUtil).generateToken("john@mail.com", "Admin");
+        verify(jwtUtil).generateToken("john@mail.com", "Admin",1L);
     }
 
     @Test
@@ -154,7 +154,7 @@ class AuthServiceImplTest {
         User user = new User((long) i, "User" + i, UserRole.Driver, email, "9000" + i, "Active", encoded);
         when(repo.findByEmail(email)).thenReturn(user);
         when(encoder.matches(password, encoded)).thenReturn(true);
-        when(jwtUtil.generateToken(email, "Driver")).thenReturn(token);
+        when(jwtUtil.generateToken(email, "Driver", (long) i)).thenReturn(token);
 
         AuthResponseDTO response = service.login(req);
 

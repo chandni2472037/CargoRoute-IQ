@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.DTO.UserDTO;
+import com.example.demo.DTO.UserUpdateDTO;
 import com.example.demo.entities.User;
 import com.example.demo.enums.UserRole;
 import com.example.demo.repositories.UserRepository;
@@ -90,4 +91,24 @@ public class UserServiceImpl implements UserService {
 
         return dto;
     }
+    
+    
+    @Override
+    public UserDTO updateUser(Long userId, UserUpdateDTO dto) {
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("User not found: " + userId));
+
+        if (dto.getRole() != null) {
+            user.setRole(UserRole.from(dto.getRole()));
+        }
+
+        if (dto.getStatus() != null) {
+            user.setStatus(dto.getStatus());
+        }
+
+        return mapToDTO(userRepository.save(user));
+    }
+
 }

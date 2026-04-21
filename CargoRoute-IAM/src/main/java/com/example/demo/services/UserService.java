@@ -2,6 +2,7 @@ package com.example.demo.services;
 
 import java.util.List;
 import com.example.demo.DTO.UserDTO;
+import com.example.demo.DTO.UserUpdateDTO;
 
 /**
  * UserService
@@ -18,4 +19,7 @@ public interface UserService {
 
     // Fetches a single user using ID
     UserDTO getUserById(Long id);
+    
+    UserDTO updateUser(Long userId, UserUpdateDTO dto);
+    
 }
