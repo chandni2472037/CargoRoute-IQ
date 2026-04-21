@@ -35,7 +35,7 @@ public class ManifestController {
     public ResponseEntity<ManifestRequiredResponseDTO> getManifestById(@PathVariable Long id) {
         return ResponseEntity.ok(manifestService.getById(id));
     }
-
+    
     // GET ALL
     @GetMapping("/getAllManifest")
     public ResponseEntity<List<ManifestRequiredResponseDTO>> getAllManifests() {
@@ -61,9 +61,7 @@ public class ManifestController {
             @RequestBody ManifestDTO manifestDTO) {
 
         manifestService.update(id, manifestDTO);
-        return ResponseEntity.ok(
-                Map.of("message", "Manifest updated successfully.")
-        );
+        return ResponseEntity.ok(Map.of("message", "Manifest updated successfully."));
     }
 
     // DELETE
@@ -71,8 +69,6 @@ public class ManifestController {
     public ResponseEntity<Map<String, String>> deleteManifest(@PathVariable Long id) {
 
         manifestService.delete(id);
-        return ResponseEntity.ok(
-                Map.of("message", "Manifest deleted successfully.")
-        );
+        return ResponseEntity.ok(Map.of("message", "Manifest deleted successfully."));
     }
 }

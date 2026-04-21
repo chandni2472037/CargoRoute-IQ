@@ -28,7 +28,7 @@ public class HandoverServiceImpl implements HandoverService {
     private static final String MANIFEST_SERVICE_URL =
             "http://MANIFEST-SERVICE/cargoRoute/manifests/getByManifestId/";
 
-    // -------------------- Entity to DTO --------------------
+    // ================= ENTITY → DTO =================
     private HandoverDTO convertToDTO(Handover entity) {
 
         HandoverDTO dto = new HandoverDTO();
@@ -43,7 +43,7 @@ public class HandoverServiceImpl implements HandoverService {
         return dto;
     }
 
-    // -------------------- DTO to Entity --------------------
+    // ================= DTO → ENTITY =================
     private Handover convertToEntity(HandoverDTO dto) {
 
         if (dto == null || dto.getManifestID() == null) {
@@ -64,7 +64,7 @@ public class HandoverServiceImpl implements HandoverService {
         return entity;
     }
 
-    // -------------------- SAME SERVICE call (no CircuitBreaker) --------------------
+    // ================= MANIFEST CALL =================
     private ManifestRequiredResponseDTO callManifestService(Long manifestId) {
         return restTemplate.getForObject(
                 MANIFEST_SERVICE_URL + manifestId,
@@ -72,19 +72,27 @@ public class HandoverServiceImpl implements HandoverService {
         );
     }
 
-    // -------------------- Response Builder --------------------
+    // ✅ ================= FIXED RESPONSE BUILDER =================
     private HandoverResponseDTO buildResponse(Handover handover) {
 
         HandoverResponseDTO response = new HandoverResponseDTO();
         response.setHandover(convertToDTO(handover));
-        response.setManifestDetails(
-                callManifestService(handover.getManifest().getManifestID())
-        );
+
+        try {
+            ManifestRequiredResponseDTO manifestDetails =
+                    callManifestService(
+                            handover.getManifest().getManifestID()
+                    );
+            response.setManifestDetails(manifestDetails);
+        } catch (Exception ex) {
+            // ✅ SAME defensive style as ManifestServiceImpl
+            response.setManifestDetails(null);
+        }
 
         return response;
     }
 
-    // -------------------- CREATE --------------------
+    // ================= CREATE =================
     @Override
     public HandoverDTO create(HandoverDTO handoverDTO) {
         return convertToDTO(
@@ -92,32 +100,32 @@ public class HandoverServiceImpl implements HandoverService {
         );
     }
 
-    // -------------------- GET BY ID --------------------
+    // ================= FETCH BY ID =================
     @Override
     public HandoverResponseDTO getById(Long handoverID) {
 
         Handover handover = handoverRepository.findById(handoverID)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Handover not found with ID: " + handoverID));
+                                "Handover not found with ID: " + handoverID
+                        )
+                );
 
         return buildResponse(handover);
     }
 
-    // -------------------- GET ALL --------------------
+    // ================= FETCH ALL =================
     @Override
     public List<HandoverResponseDTO> getAll() {
 
-        List<Handover> handovers = handoverRepository.findAll();
         List<HandoverResponseDTO> responses = new ArrayList<>();
-
-        for (Handover handover : handovers) {
+        for (Handover handover : handoverRepository.findAll()) {
             responses.add(buildResponse(handover));
         }
         return responses;
     }
 
-    // -------------------- GET BY MANIFEST ID --------------------
+    // ================= FETCH BY MANIFEST ID =================
     @Override
     public List<HandoverResponseDTO> getByManifestID(Long manifestID) {
 
@@ -126,18 +134,18 @@ public class HandoverServiceImpl implements HandoverService {
 
         if (handovers.isEmpty()) {
             throw new ResourceNotFoundException(
-                    "Handover not found for Manifest ID: " + manifestID);
+                    "Handover not found for Manifest ID: " + manifestID
+            );
         }
 
         List<HandoverResponseDTO> responses = new ArrayList<>();
         for (Handover handover : handovers) {
             responses.add(buildResponse(handover));
         }
-
         return responses;
     }
 
-    // -------------------- GET BY HANDED BY --------------------
+    // ================= FETCH BY HANDED BY =================
     @Override
     public List<HandoverResponseDTO> getByHandedBy(String handedBy) {
 
@@ -146,25 +154,27 @@ public class HandoverServiceImpl implements HandoverService {
 
         if (handovers.isEmpty()) {
             throw new ResourceNotFoundException(
-                    "Handover not found for handedBy: " + handedBy);
+                    "Handover not found for handedBy: " + handedBy
+            );
         }
 
         List<HandoverResponseDTO> responses = new ArrayList<>();
         for (Handover handover : handovers) {
             responses.add(buildResponse(handover));
         }
-
         return responses;
     }
 
-    // -------------------- UPDATE --------------------
+    // ================= UPDATE =================
     @Override
     public HandoverDTO update(Long handoverID, HandoverDTO handoverDTO) {
 
         Handover existing = handoverRepository.findById(handoverID)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Handover not found with ID: " + handoverID));
+                                "Handover not found with ID: " + handoverID
+                        )
+                );
 
         if (handoverDTO.getHandedBy() != null)
             existing.setHandedBy(handoverDTO.getHandedBy());
@@ -181,17 +191,20 @@ public class HandoverServiceImpl implements HandoverService {
         if (handoverDTO.getNotes() != null)
             existing.setNotes(handoverDTO.getNotes());
 
-        return convertToDTO(handoverRepository.save(existing));
+        return convertToDTO(
+                handoverRepository.save(existing)
+        );
     }
 
-    // -------------------- DELETE --------------------
+    // ================= DELETE =================
     @Override
     public void delete(Long handoverID) {
-
         Handover handover = handoverRepository.findById(handoverID)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Handover not found with ID: " + handoverID));
+                                "Handover not found with ID: " + handoverID
+                        )
+                );
 
         handoverRepository.delete(handover);
     }

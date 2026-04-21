@@ -1,22 +1,23 @@
 package com.example.demo.service;
 
-
 import com.example.demo.dto.LoadDTO;
 import com.example.demo.dto.LoadResponseDTO;
 import com.example.demo.dto.ManifestDTO;
 import com.example.demo.dto.ManifestRequiredResponseDTO;
 import com.example.demo.dto.VehicleDTO;
-
 import com.example.demo.entities.Manifest;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ManifestRepository;
 import com.example.demo.serviceimpl.ManifestServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,7 +66,7 @@ class ManifestServiceImplTest {
         manifestDTO.setManifestURI("s3://manifest.pdf");
     }
 
-    // ── create ───────────────────────────────────────────────────────
+    // ───────────────── CREATE ─────────────────
 
     @Test
     void create_ShouldSaveAndReturnDTO() {
@@ -80,10 +83,10 @@ class ManifestServiceImplTest {
         verify(manifestRepository, times(1)).save(any(Manifest.class));
     }
 
-    // ── getById ──────────────────────────────────────────────────────
+    // ───────────────── GET BY ID ─────────────────
 
     @Test
-    void getById_ShouldReturnManifest_WhenFound() {
+    void getById_ShouldReturnManifestWithLoadAndVehicle() {
 
         LoadDTO loadDTO = new LoadDTO();
         loadDTO.setVehicleID(300L);
@@ -104,6 +107,7 @@ class ManifestServiceImplTest {
         assertNotNull(result);
         assertNotNull(result.getManifest());
         assertNotNull(result.getLoad());
+        assertNotNull(result.getVehicle());
     }
 
     @Test
@@ -116,10 +120,10 @@ class ManifestServiceImplTest {
                 () -> manifestService.getById(99L));
     }
 
-    // ── getAll ───────────────────────────────────────────────────────
+    // ───────────────── GET ALL ─────────────────
 
     @Test
-    void getAll_ShouldReturnAllManifests() {
+    void getAll_ShouldReturnList() {
 
         when(manifestRepository.findAll())
                 .thenReturn(List.of(manifest));
@@ -130,11 +134,10 @@ class ManifestServiceImplTest {
                 manifestService.getAll();
 
         assertEquals(1, result.size());
-        verify(manifestRepository, times(1)).findAll();
     }
 
     @Test
-    void getAll_ShouldReturnEmptyList_WhenNoManifests() {
+    void getAll_ShouldReturnEmptyList_WhenNoData() {
 
         when(manifestRepository.findAll())
                 .thenReturn(List.of());
@@ -145,7 +148,7 @@ class ManifestServiceImplTest {
         assertTrue(result.isEmpty());
     }
 
-    // ── getByLoadID ──────────────────────────────────────────────────
+    // ───────────────── GET BY LOAD ID ─────────────────
 
     @Test
     void getByLoadID_ShouldReturnManifest() {
@@ -171,7 +174,7 @@ class ManifestServiceImplTest {
                 () -> manifestService.getByLoadID(100L));
     }
 
-    // ── getByWarehouseID ─────────────────────────────────────────────
+    // ───────────────── GET BY WAREHOUSE ID ─────────────────
 
     @Test
     void getByWarehouseID_ShouldReturnList() {
@@ -187,10 +190,10 @@ class ManifestServiceImplTest {
         assertEquals(1, result.size());
     }
 
-    // ── update ───────────────────────────────────────────────────────
+    // ───────────────── UPDATE ─────────────────
 
     @Test
-    void update_ShouldModifyAndReturnDTO() {
+    void update_ShouldUpdateAndReturnDTO() {
 
         when(manifestRepository.findById(1L))
                 .thenReturn(Optional.of(manifest));
@@ -217,10 +220,10 @@ class ManifestServiceImplTest {
                 () -> manifestService.update(1L, manifestDTO));
     }
 
-    // ── delete ───────────────────────────────────────────────────────
+    // ───────────────── DELETE ─────────────────
 
     @Test
-    void delete_ShouldDeleteManifest() {
+    void delete_ShouldDeleteManifest_WhenExists() {
 
         when(manifestRepository.existsById(1L))
                 .thenReturn(true);

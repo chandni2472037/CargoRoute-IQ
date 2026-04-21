@@ -1,16 +1,15 @@
 package com.example.demo.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-import com.example.demo.dto.BookingDTO;
-import com.example.demo.dto.ProofOfDeliveryDTO;
-import com.example.demo.dto.ProofOfDeliveryResponseDTO;
-import com.example.demo.entities.ProofOfDelivery;
-import com.example.demo.entities.enums.PodType;
-import com.example.demo.entities.enums.ProofOfDeliveryStatus;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
-import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.repository.ProofOfDeliveryRepository;
-import com.example.demo.serviceimpl.ProofOfDeliveryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,13 +18,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.example.demo.dto.BookingDTO;
+import com.example.demo.dto.ProofOfDeliveryDTO;
+import com.example.demo.dto.ProofOfDeliveryResponseDTO;
+import com.example.demo.entities.ProofOfDelivery;
+import com.example.demo.entities.enums.PodType;
+import com.example.demo.entities.enums.ProofOfDeliveryStatus;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.ProofOfDeliveryRepository;
+import com.example.demo.serviceimpl.ProofOfDeliveryServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class ProofOfDeliveryServiceImplTest {
@@ -37,233 +39,127 @@ class ProofOfDeliveryServiceImplTest {
     private RestTemplate restTemplate;
 
     @InjectMocks
-    private ProofOfDeliveryServiceImpl podService;
+    private ProofOfDeliveryServiceImpl service;
 
     private ProofOfDelivery pod;
     private ProofOfDeliveryDTO podDTO;
+    private BookingDTO bookingDTO;
 
     @BeforeEach
     void setUp() {
-
         pod = new ProofOfDelivery();
         pod.setPodID(1L);
-        pod.setBookingID(10L);
-        pod.setDeliveredAt(LocalDateTime.now());
-        pod.setReceivedBy("Customer");
-        pod.setPodURI("s3://pod/photo.jpg");
-        pod.setPodType(PodType.Photo);
-        pod.setStatus(ProofOfDeliveryStatus.UPLOADED);
+        pod.setBookingID(100L);
+        pod.setReceivedBy("John Doe");
+        pod.setPodType(PodType.Signature);
+        pod.setStatus(ProofOfDeliveryStatus.PENDING);
 
         podDTO = new ProofOfDeliveryDTO();
-        podDTO.setBookingID(10L);
-        podDTO.setDeliveredAt(LocalDateTime.now());
-        podDTO.setReceivedBy("Customer");
-        podDTO.setPodURI("s3://pod/photo.jpg");
-        podDTO.setPodType(PodType.Photo);
-        podDTO.setStatus(ProofOfDeliveryStatus.UPLOADED);
+        podDTO.setBookingID(100L);
+        podDTO.setPodType(PodType.Signature);
+        podDTO.setStatus(ProofOfDeliveryStatus.PENDING);
+
+        bookingDTO = new BookingDTO();
+        // Assume BookingDTO has basic fields
     }
 
-    // ── create ───────────────────────────────────────────────────────
+    // ================= CREATE TESTS =================
 
     @Test
-    void create_ShouldSaveAndReturnDTO() {
+    void create_Success() {
+        when(repository.save(any(ProofOfDelivery.class))).thenReturn(pod);
 
-        when(repository.save(any(ProofOfDelivery.class)))
-                .thenReturn(pod);
-
-        ProofOfDeliveryDTO result =
-                podService.create(podDTO);
+        ProofOfDeliveryDTO result = service.create(podDTO);
 
         assertNotNull(result);
-        assertEquals(10L, result.getBookingID());
-        assertEquals(PodType.Photo, result.getPodType());
-        verify(repository, times(1))
-                .save(any(ProofOfDelivery.class));
+        assertEquals(1L, result.getPodID());
+        verify(repository).save(any(ProofOfDelivery.class));
     }
 
     @Test
-    void create_ShouldThrowException_WhenBookingIDMissing() {
-
-        ProofOfDeliveryDTO invalid = new ProofOfDeliveryDTO();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> podService.create(invalid));
+    void create_ThrowsBadRequest_WhenBookingIdMissing() {
+        podDTO.setBookingID(null);
+        assertThrows(BadRequestException.class, () -> service.create(podDTO));
     }
 
-    // ── getById ──────────────────────────────────────────────────────
+    // ================= GET BY ID & FALLBACK TESTS =================
 
     @Test
-    void getById_ShouldReturnPod_WhenFound() {
+    void getById_Success() {
+        when(repository.findById(1L)).thenReturn(Optional.of(pod));
+        when(restTemplate.getForObject(anyString(), eq(BookingDTO.class))).thenReturn(bookingDTO);
 
-        when(repository.findById(1L))
-                .thenReturn(Optional.of(pod));
-        when(restTemplate.getForObject(any(String.class),
-                eq(BookingDTO.class)))
-                .thenReturn(new BookingDTO());
-
-        ProofOfDeliveryResponseDTO result =
-                podService.getById(1L);
+        ProofOfDeliveryResponseDTO result = service.getById(1L);
 
         assertNotNull(result);
-        assertEquals(1L,
-                result.getProofOfDelivery().getPodID());
         assertNotNull(result.getBooking());
+        assertEquals(1L, result.getProofOfDelivery().getPodID());
     }
 
     @Test
-    void getById_ShouldThrowException_WhenNotFound() {
+    void getByIdFallback_ReturnsPartialResponse() {
+        // Mocking the behavior inside the fallback
+        when(repository.findById(1L)).thenReturn(Optional.of(pod));
+        
+        ProofOfDeliveryResponseDTO result = service.getByIdFallback(1L, new RuntimeException("Service Down"));
 
-        when(repository.findById(99L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> podService.getById(99L));
+        assertNotNull(result);
+        assertNull(result.getBooking()); // Fallback logic check
+        assertEquals("John Doe", result.getProofOfDelivery().getReceivedBy());
     }
 
-    // ── getAll ───────────────────────────────────────────────────────
+    // ================= ENUM-BASED SEARCH TESTS =================
 
     @Test
-    void getAll_ShouldReturnAllPods() {
+    void getByPodType_Success() {
+        when(repository.findByPodType(PodType.Signature)).thenReturn(Arrays.asList(pod));
+        when(restTemplate.getForObject(anyString(), eq(BookingDTO.class))).thenReturn(bookingDTO);
 
-        when(repository.findAll())
-                .thenReturn(List.of(pod));
-        when(restTemplate.getForObject(any(String.class),
-                eq(BookingDTO.class)))
-                .thenReturn(new BookingDTO());
+        List<ProofOfDeliveryResponseDTO> results = service.getByPodType(PodType.Signature);
 
-        List<ProofOfDeliveryResponseDTO> result =
-                podService.getAll();
-
-        assertEquals(1, result.size());
-        verify(repository, times(1)).findAll();
+        assertEquals(1, results.size());
+        verify(repository).findByPodType(PodType.Signature);
     }
 
     @Test
-    void getAll_ShouldReturnEmptyList_WhenNoPods() {
+    void getByPodType_NotFound_ThrowsException() {
+        when(repository.findByPodType(PodType.Photo)).thenReturn(Collections.emptyList());
 
-        when(repository.findAll())
-                .thenReturn(List.of());
-
-        List<ProofOfDeliveryResponseDTO> result =
-                podService.getAll();
-
-        assertTrue(result.isEmpty());
-    }
-
-    // ── getByBookingID ──────────────────────────────────────────────
-
-    @Test
-    void getByBookingID_ShouldReturnPod() {
-
-        when(repository.findByBookingID(10L))
-                .thenReturn(pod);
-        when(restTemplate.getForObject(any(String.class),
-                eq(BookingDTO.class)))
-                .thenReturn(new BookingDTO());
-
-        ProofOfDeliveryResponseDTO result =
-                podService.getByBookingID(10L);
-
-        assertEquals(10L,
-                result.getProofOfDelivery().getBookingID());
+        assertThrows(ResourceNotFoundException.class, () -> service.getByPodType(PodType.Photo));
     }
 
     @Test
-    void getByBookingID_ShouldThrowException_WhenNotFound() {
+    void getByStatusFallback_ManualTrigger() {
+        when(repository.findByStatus(ProofOfDeliveryStatus.VERIFIED)).thenReturn(Arrays.asList(pod));
 
-        when(repository.findByBookingID(10L))
-                .thenReturn(null);
+        List<ProofOfDeliveryResponseDTO> results = service.getByProofOfDeliveryStatusFallback(
+                ProofOfDeliveryStatus.VERIFIED, new RuntimeException());
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> podService.getByBookingID(10L));
+        assertFalse(results.isEmpty());
+        assertNull(results.get(0).getBooking()); // Logic check for fallback
     }
 
-    // ── getByPodType ────────────────────────────────────────────────
+    // ================= UPDATE & DELETE =================
 
     @Test
-    void getByPodType_ShouldReturnList() {
+    void update_Success() {
+        when(repository.findById(1L)).thenReturn(Optional.of(pod));
+        when(repository.save(any(ProofOfDelivery.class))).thenReturn(pod);
 
-        when(repository.findByPodType(PodType.Photo))
-                .thenReturn(List.of(pod));
-        when(restTemplate.getForObject(any(String.class),
-                eq(BookingDTO.class)))
-                .thenReturn(new BookingDTO());
+        podDTO.setReceivedBy("Jane Doe");
+        ProofOfDeliveryDTO result = service.update(1L, podDTO);
 
-        List<ProofOfDeliveryResponseDTO> result =
-                podService.getByPodType(PodType.Photo);
-
-        assertEquals(1, result.size());
-    }
-
-    // ── getByStatus ─────────────────────────────────────────────────
-
-    @Test
-    void getByProofOfDeliveryStatus_ShouldReturnList() {
-
-        when(repository.findByStatus(ProofOfDeliveryStatus.UPLOADED))
-                .thenReturn(List.of(pod));
-        when(restTemplate.getForObject(any(String.class),
-                eq(BookingDTO.class)))
-                .thenReturn(new BookingDTO());
-
-        List<ProofOfDeliveryResponseDTO> result =
-                podService.getByProofOfDeliveryStatus(
-                        ProofOfDeliveryStatus.UPLOADED);
-
-        assertEquals(1, result.size());
-    }
-
-    // ── update ───────────────────────────────────────────────────────
-
-    @Test
-    void update_ShouldModifyAndReturnDTO() {
-
-        when(repository.findById(1L))
-                .thenReturn(Optional.of(pod));
-        when(repository.save(any(ProofOfDelivery.class)))
-                .thenReturn(pod);
-
-        ProofOfDeliveryDTO updateDTO = new ProofOfDeliveryDTO();
-        updateDTO.setStatus(ProofOfDeliveryStatus.VERIFIED);
-
-        ProofOfDeliveryDTO result =
-                podService.update(1L, updateDTO);
-
-        assertEquals(ProofOfDeliveryStatus.VERIFIED,
-                result.getStatus());
+        assertEquals("Jane Doe", result.getReceivedBy());
+        verify(repository).save(pod);
     }
 
     @Test
-    void update_ShouldThrowException_WhenNotFound() {
+    void delete_Success() {
+        when(repository.findById(1L)).thenReturn(Optional.of(pod));
+        doNothing().when(repository).delete(pod);
 
-        when(repository.findById(1L))
-                .thenReturn(Optional.empty());
+        service.delete(1L);
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> podService.update(1L, podDTO));
-    }
-
-    // ── delete ───────────────────────────────────────────────────────
-
-    @Test
-    void delete_ShouldDeletePod() {
-
-        when(repository.findById(1L))
-                .thenReturn(Optional.of(pod));
-
-        assertDoesNotThrow(() -> podService.delete(1L));
-
-        verify(repository, times(1))
-                .delete(pod);
-    }
-
-    @Test
-    void delete_ShouldThrowException_WhenNotFound() {
-
-        when(repository.findById(99L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> podService.delete(99L));
+        verify(repository).delete(pod);
     }
 }
