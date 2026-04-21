@@ -11,6 +11,7 @@ import com.example.demo.service.RouteService;
 
 @RestController
 @RequestMapping("/cargoRoute/routes")
+@CrossOrigin(origins = "http://localhost:3000")
 public class RouteController {
 
     @Autowired
