@@ -12,6 +12,7 @@ import com.example.demo.service.LoadService;
 
 @RestController
 @RequestMapping("/cargoRoute/loads")
+@CrossOrigin(origins = "http://localhost:3000")
 public class LoadController {
 
     @Autowired
