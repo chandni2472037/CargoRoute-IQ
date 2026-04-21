@@ -10,8 +10,10 @@ import com.example.demo.DTO.NotificationDTO;
 import com.example.demo.DTO.NotificationResponseDTO;
 import com.example.demo.services.NotificationService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("/cargoRoute/notifications")
 public class NotificationController {
 
     private final NotificationService service;
@@ -20,7 +22,7 @@ public class NotificationController {
         this.service = service;
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<NotificationDTO> create(@RequestBody NotificationDTO dto) {
         return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
     }
@@ -30,7 +32,7 @@ public class NotificationController {
         return ResponseEntity.ok(service.getById(id));
     }
 
-    @GetMapping
+    @GetMapping("/getAllNotifications")
     public ResponseEntity<List<NotificationDTO>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
@@ -47,4 +49,13 @@ public class NotificationController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/my")
+    public ResponseEntity<List<NotificationDTO>> getMyNotifications(
+            HttpServletRequest request) {
+
+        Long userId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(service.getByUserId(userId));
+    }
+
 }

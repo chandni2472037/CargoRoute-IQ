@@ -15,4 +15,5 @@ public interface NotificationService {
     NotificationResponseDTO getNotificationWithUser(Long id);
 
     void delete(Long id);
+    List<NotificationDTO> getByUserId(Long userId);
 }

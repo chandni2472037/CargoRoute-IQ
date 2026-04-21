@@ -25,9 +25,9 @@ public class SecurityConfig {
 
             // Only protect this microservice’s endpoints
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/notifications/**")
+                .requestMatchers("/cargoRoute/notifications/**")
                     .hasAnyRole("Admin", "Dispatcher", "Driver")
-                .requestMatchers("/tasks/**")
+                .requestMatchers("/cargoRoute/tasks/**")
                     .hasAnyRole("Admin","Dispatcher","FleetManager","WarehouseManager")
                 .anyRequest().authenticated()
             )

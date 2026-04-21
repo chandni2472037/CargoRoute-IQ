@@ -9,7 +9,7 @@ import com.example.demo.DTO.TaskDTO;
 import com.example.demo.services.TaskService;
 
 @RestController
-@RequestMapping("/tasks")
+@RequestMapping("/cargoRoute/tasks")
 public class TaskController {
 
     private final TaskService service;
@@ -18,12 +18,12 @@ public class TaskController {
         this.service = service;
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<TaskDTO> create(@RequestBody TaskDTO dto) {
         return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
     }
 
-    @GetMapping
+    @GetMapping("getAllTasks")
     public ResponseEntity<List<TaskDTO>> getAll() {
         return ResponseEntity.ok(service.getAll());
     }
