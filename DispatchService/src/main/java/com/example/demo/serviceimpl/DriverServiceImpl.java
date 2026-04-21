@@ -51,7 +51,6 @@ public class DriverServiceImpl implements DriverService {
         if (driverDTO == null || driverDTO.getName() == null) {
             throw new BadRequestException("Driver name is required");
         }
-
         Driver saved = driverRepository.save(convertToEntity(driverDTO));
         return convertToDto(saved);
     }
@@ -61,10 +60,7 @@ public class DriverServiceImpl implements DriverService {
     public DriverDTO fetchByID(Long driverID) {
 
         Driver driver = driverRepository.findById(driverID)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Driver not found with ID: " + driverID));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Driver not found with ID: " + driverID));
         return convertToDto(driver);
     }
 
@@ -101,15 +97,10 @@ public class DriverServiceImpl implements DriverService {
     public DriverDTO updateDriver(Long driverID, DriverDTO driverDTO) {
 
         Driver existing = driverRepository.findById(driverID)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Driver not found with ID: " + driverID));
+                .orElseThrow(() -> new ResourceNotFoundException("Driver not found with ID: " + driverID));
 
         if (driverDTO.getName() != null)
             existing.setName(driverDTO.getName());
-
-        if (driverDTO.getLicenseNo() != null)
-            existing.setLicenseNo(driverDTO.getLicenseNo());
 
         if (driverDTO.getContactInfo() != null)
             existing.setContactInfo(driverDTO.getContactInfo());
@@ -128,10 +119,7 @@ public class DriverServiceImpl implements DriverService {
     public void delete(Long driverID) {
 
         Driver driver = driverRepository.findById(driverID)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Driver not found with ID: " + driverID));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Driver not found with ID: " + driverID));
         driverRepository.delete(driver);
     }
 }

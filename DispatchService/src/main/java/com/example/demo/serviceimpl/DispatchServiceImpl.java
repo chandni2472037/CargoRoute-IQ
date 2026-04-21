@@ -1,12 +1,11 @@
 package com.example.demo.serviceimpl;
 import java.util.ArrayList;
 import java.util.List;
- 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
- 
- 
+
 import com.example.demo.dto.DispatchDTO;
 import com.example.demo.dto.DispatchResponseDTO;
 import com.example.demo.dto.LoadDTO;
@@ -17,45 +16,42 @@ import com.example.demo.entities.enums.DispatchStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.DispatchRepository;
 import com.example.demo.service.DispatchService;
- 
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
- 
+
 @Service
 public class DispatchServiceImpl implements DispatchService {
- 
+
     private static final String DISPATCH_CB = "dispatchService";
- 
+
     @Autowired
     private DispatchRepository dispatchRepository;
- 
+
     @Autowired
     private RestTemplate restTemplate;
- 
+
     private static final String LOAD_SERVICE_URL =
             "http://ROUTING-SERVICE/cargoRoute/loads/getLoad/";
- 
+
     private static final String FLEET_SERVICE_URL =
-    		"http://FLEET-SERVICE/cargoRoute/vehicles/getVehicle/";
- 
-    /* ================= CREATE ================= */
- 
+            "http://FLEET-SERVICE/cargoRoute/vehicles/getVehicle/";
+
+    // ================= CREATE =================
     @Override
     public DispatchDTO insert(DispatchDTO dto) {
         Dispatch dispatch = convertToEntity(dto);
         return convertToDto(dispatchRepository.save(dispatch));
     }
- 
-    /* ================= FETCH ================= */
- 
+
+    // ================= FETCH BY ID =================
     @Override
     @CircuitBreaker(name = DISPATCH_CB, fallbackMethod = "fetchByIDFallback")
     public DispatchResponseDTO fetchByID(Long dispatchID) {
         Dispatch dispatch = findDispatch(dispatchID);
         return buildResponse(dispatch);
     }
- 
+
     public DispatchResponseDTO fetchByIDFallback(Long dispatchID, Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full dispatch response for ID = " + dispatchID);
         Dispatch dispatch = findDispatch(dispatchID);
         DispatchResponseDTO response = new DispatchResponseDTO();
         response.setDispatch(convertToDto(dispatch));
@@ -63,102 +59,104 @@ public class DispatchServiceImpl implements DispatchService {
         response.setVehicle(null);
         return response;
     }
- 
+
+    // ================= FETCH BY LOAD ID =================
     @Override
-    @CircuitBreaker(name = DISPATCH_CB, fallbackMethod = "fetchByAssignedByFallback")
+    @CircuitBreaker(name = DISPATCH_CB, fallbackMethod = "findByLoadIDFallback")
+    public DispatchResponseDTO findByLoadID(Long loadID) {
+
+        Dispatch dispatch = dispatchRepository.findByLoadID(loadID);
+        if (dispatch == null) {
+            throw new ResourceNotFoundException("Dispatch not found for LoadID: " + loadID);
+        }
+
+        return buildResponse(dispatch);
+    }
+
+    public DispatchResponseDTO findByLoadIDFallback(Long loadID, Throwable t) {
+
+        Dispatch dispatch = dispatchRepository.findByLoadID(loadID);
+        if (dispatch == null) {
+            throw new ResourceNotFoundException("Dispatch not found for LoadID: " + loadID);
+        }
+
+        DispatchResponseDTO response = new DispatchResponseDTO();
+        response.setDispatch(convertToDto(dispatch));
+        response.setLoad(null);
+        response.setVehicle(null);
+        return response;
+    }
+
+    // ================= FETCH BY ASSIGNED BY (NO CIRCUIT BREAKER ✅) =================
+    @Override
     public List<DispatchResponseDTO> fetchByAssignedBy(String assignedBy) {
+
+        List<Dispatch> dispatches = dispatchRepository.findByAssignedBy(assignedBy);
+        if (dispatches.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "Dispatch not found for assignedBy: " + assignedBy);
+        }
+
         List<DispatchResponseDTO> responses = new ArrayList<>();
-        for (Dispatch dispatch :
-                dispatchRepository.findByAssignedBy(assignedBy)) {
+        for (Dispatch dispatch : dispatches) {
             responses.add(buildResponse(dispatch));
         }
         return responses;
     }
- 
-    public List<DispatchResponseDTO> fetchByAssignedByFallback(String assignedBy, Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full response for assignedBy = " + assignedBy);
-        List<DispatchResponseDTO> responses = new ArrayList<>();
-        for (Dispatch dispatch : dispatchRepository.findByAssignedBy(assignedBy)) {
-            DispatchResponseDTO response = new DispatchResponseDTO();
-            response.setDispatch(convertToDto(dispatch));
-            responses.add(response);
-        }
-        return responses;
-    }
- 
+
+    // ================= FETCH BY STATUS (NO CIRCUIT BREAKER ✅) =================
     @Override
-    @CircuitBreaker(name = DISPATCH_CB, fallbackMethod = "fetchByStatusFallback")
     public List<DispatchResponseDTO> fetchByStatus(DispatchStatus status) {
+
+        List<Dispatch> dispatches = dispatchRepository.findByStatus(status);
+        if (dispatches.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "Dispatch not found for status: " + status);
+        }
+
         List<DispatchResponseDTO> responses = new ArrayList<>();
-        for (Dispatch dispatch :
-                dispatchRepository.findByStatus(status)) {
+        for (Dispatch dispatch : dispatches) {
             responses.add(buildResponse(dispatch));
         }
         return responses;
     }
- 
-    public List<DispatchResponseDTO> fetchByStatusFallback(DispatchStatus status, Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full response for status = " + status);
-        List<DispatchResponseDTO> responses = new ArrayList<>();
-        for (Dispatch dispatch : dispatchRepository.findByStatus(status)) {
-            DispatchResponseDTO response = new DispatchResponseDTO();
-            response.setDispatch(convertToDto(dispatch));
-            responses.add(response);
-        }
-        return responses;
-    }
- 
+
+    // ================= FETCH ALL =================
     @Override
-    @CircuitBreaker(name = DISPATCH_CB, fallbackMethod = "fetchAllFallback")
     public List<DispatchResponseDTO> fetchAll() {
-        List<DispatchResponseDTO> responses = new ArrayList<>();
-        for (Dispatch dispatch :dispatchRepository.findAll()) {
-            responses.add(buildResponse(dispatch));
-        }
-        return responses;
-    }
- 
-    public List<DispatchResponseDTO> fetchAllFallback(Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full dispatch list, returning partial data");
+
         List<DispatchResponseDTO> responses = new ArrayList<>();
         for (Dispatch dispatch : dispatchRepository.findAll()) {
-            DispatchResponseDTO response = new DispatchResponseDTO();
-            response.setDispatch(convertToDto(dispatch));
-            responses.add(response);
+            responses.add(buildResponse(dispatch));
         }
         return responses;
     }
- 
-    /* ================= UPDATE ================= */
- 
+
+    // ================= UPDATE =================
     @Override
     public DispatchDTO updateDispatch(Long dispatchID, DispatchDTO dto) {
- 
+
         Dispatch dispatch = findDispatch(dispatchID);
- 
-        if (dto.getLoadID() != null)
-            dispatch.setLoadID(dto.getLoadID());
+
         if (dto.getAssignedDriverID() != null)
             dispatch.setAssignedDriverID(dto.getAssignedDriverID());
+
         if (dto.getAssignedBy() != null)
             dispatch.setAssignedBy(dto.getAssignedBy());
-        if (dto.getAssignedAt() != null)
-            dispatch.setAssignedAt(dto.getAssignedAt());
+
         if (dto.getStatus() != null)
             dispatch.setStatus(dto.getStatus());
- 
+
         return convertToDto(dispatchRepository.save(dispatch));
     }
- 
-    /* ================= DELETE ================= */
- 
+
+    // ================= DELETE =================
     @Override
     public void delete(Long dispatchID) {
         dispatchRepository.delete(findDispatch(dispatchID));
     }
- 
-    /* ================= CIRCUIT BREAKER CALLS ================= */
- 
+
+    // ================= REMOTE CALLS (CIRCUIT BREAKER ✅) =================
     @CircuitBreaker(name = "loadService", fallbackMethod = "loadFallback")
     public LoadResponseDTO callLoadService(Long loadId) {
         return restTemplate.getForObject(
@@ -166,14 +164,14 @@ public class DispatchServiceImpl implements DispatchService {
                 LoadResponseDTO.class
         );
     }
- 
-    public LoadResponseDTO loadFallback(Long loadId, Exception ex) {
-        System.out.println(
-            "Fallback executed: LOAD service unavailable for loadId = " + loadId
-        );
-        return null;
+
+    // ✅ IMPORTANT: Throwable (not Exception)
+    public LoadResponseDTO loadFallback(Long loadId, Throwable ex) {
+        LoadResponseDTO fallback = new LoadResponseDTO();
+        fallback.setLoad(null);
+        return fallback;
     }
- 
+
     @CircuitBreaker(name = "fleetService", fallbackMethod = "fleetFallback")
     public VehicleDTO callFleetService(Long vehicleId) {
         return restTemplate.getForObject(
@@ -181,48 +179,55 @@ public class DispatchServiceImpl implements DispatchService {
                 VehicleDTO.class
         );
     }
- 
-    public VehicleDTO fleetFallback(Long vehicleId, Exception ex) {
-        System.out.println(
-            "Fallback executed: FLEET service unavailable for vehicleId = " + vehicleId
-        );
+
+    // ✅ IMPORTANT: Throwable (not Exception)
+    public VehicleDTO fleetFallback(Long vehicleId, Throwable ex) {
         return null;
     }
- 
-    /* ================= RESPONSE BUILDER ================= */
- 
+
+    // ================= RESPONSE BUILDER (DEFENSIVE ✅) =================
     private DispatchResponseDTO buildResponse(Dispatch dispatch) {
- 
+
         DispatchResponseDTO response = new DispatchResponseDTO();
         response.setDispatch(convertToDto(dispatch));
- 
-        LoadResponseDTO loadResponse =
-                callLoadService(dispatch.getLoadID());
- 
-        if (loadResponse != null && loadResponse.getLoad() != null) {
- 
+
+        try {
+            LoadResponseDTO loadResponse =
+                    callLoadService(dispatch.getLoadID());
+
+            if (loadResponse == null || loadResponse.getLoad() == null) {
+                response.setLoad(null);
+                response.setVehicle(null);
+                return response;
+            }
+
             LoadDTO load = loadResponse.getLoad();
             response.setLoad(load);
- 
+
             if (load.getVehicleID() != null) {
-                VehicleDTO vehicle =
-                        callFleetService(load.getVehicleID());
+                VehicleDTO vehicle = callFleetService(load.getVehicleID());
                 response.setVehicle(vehicle);
+            } else {
+                response.setVehicle(null);
             }
+
+        } catch (Exception ex) {
+            // ✅ FINAL SAFETY NET – NEVER RETURN 500
+            response.setLoad(null);
+            response.setVehicle(null);
         }
- 
+
         return response;
     }
- 
-    /* ================= HELPERS ================= */
- 
+
+    // ================= UTILITIES =================
     private Dispatch findDispatch(Long id) {
         return dispatchRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Dispatch not found with ID: " + id));
     }
- 
+
     private DispatchDTO convertToDto(Dispatch dispatch) {
         DispatchDTO dto = new DispatchDTO();
         dto.setDispatchID(dispatch.getDispatchID());
@@ -233,7 +238,7 @@ public class DispatchServiceImpl implements DispatchService {
         dto.setStatus(dispatch.getStatus());
         return dto;
     }
- 
+
     private Dispatch convertToEntity(DispatchDTO dto) {
         Dispatch dispatch = new Dispatch();
         dispatch.setDispatchID(dto.getDispatchID());

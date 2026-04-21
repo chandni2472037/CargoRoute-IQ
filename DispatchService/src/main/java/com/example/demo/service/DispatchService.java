@@ -1,6 +1,7 @@
 package com.example.demo.service;
 import com.example.demo.dto.DispatchDTO;
 import com.example.demo.dto.DispatchResponseDTO;
+import com.example.demo.entities.Dispatch;
 import com.example.demo.entities.enums.DispatchStatus;
 
 import java.util.List;
@@ -12,6 +13,10 @@ public interface DispatchService {
 
     //Get dispatch by dispatch ID
     public DispatchResponseDTO fetchByID(Long dispatchID);
+    
+    //Get dispatch by load ID
+    public DispatchResponseDTO findByLoadID(Long loadID);
+    
 
     //Get dispatches by assigned by (dispatcher name)
     public List<DispatchResponseDTO> fetchByAssignedBy(String assignedBy);
