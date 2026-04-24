@@ -12,5 +12,6 @@ import java.util.List;
 public interface ClaimRepository extends JpaRepository<Claim, Long> {
     List<Claim> findByExceptionRecord_ExceptionID(Long exceptionID);
     List<Claim> findByStatus(ClaimStatus status);
+    List<Claim> findByFiledBy(Long userId);
 }
 

@@ -17,6 +17,9 @@ import com.example.demo.repository.ClaimRepository;
 import com.example.demo.repository.ExceptionRepository;
 import com.example.demo.service.ClaimService;
 import com.example.demo.service.ExceptionService;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import com.example.demo.security.JwtUtil;
 
 @Service // Marks this class as a Spring-managed service component
 public class ClaimServiceImpl implements ClaimService {
@@ -30,6 +33,9 @@ public class ClaimServiceImpl implements ClaimService {
     @Autowired
     private ExceptionService exceptionService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     // Save a new Claim or update an existing one
     public ClaimDTO createClaim(ClaimDTO dto){
         if (dto == null) {
@@ -38,23 +44,35 @@ public class ClaimServiceImpl implements ClaimService {
         if (dto.getExceptionID() == null) {
             throw new com.example.demo.exception.BadRequestException("Exception ID is required");
         }
-        if (dto.getFiledBy() == null || dto.getFiledBy().trim().isEmpty()) {
-            throw new com.example.demo.exception.BadRequestException("Filed by field is required");
-        }
         if (dto.getAmountClaimed() == null || dto.getAmountClaimed() <= 0) {
             throw new com.example.demo.exception.BadRequestException("Amount claimed must be a positive number");
         }
         if (dto.getStatus() == null) {
             dto.setStatus(com.example.demo.entity.enums.ClaimStatus.OPEN);
         }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = (String) authentication.getCredentials();
+        Long userId = jwtUtil.extractUserId(token);
+
         Claim claim = convertToEntity(dto);
+        // Ensure ownership is set from authenticated context — ignore frontend-provided ownership
+        claim.setFiledBy(userId);
         Claim saved = repo.save(claim);
         return convertToDTO(saved);
     }
 
     // Retrieve all claims from the database
     public List<ClaimDTO> getAllClaims(){
-        return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = (String) authentication.getCredentials();
+        Long userId = jwtUtil.extractUserId(token);
+        String role = jwtUtil.extractRole(token);
+
+        if ("Admin".equalsIgnoreCase(role)) {
+            return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+        } else {
+            return repo.findByFiledBy(userId).stream().map(this::convertToDTO).collect(Collectors.toList());
+        }
     }
 
     // Retrieve a claim by its ID with exception details
@@ -113,7 +131,7 @@ public class ClaimServiceImpl implements ClaimService {
     private Claim convertToEntity(ClaimDTO dto) {
         Claim claim = new Claim();
         claim.setClaimID(dto.getClaimID());
-        claim.setFiledBy(dto.getFiledBy());
+        // filedBy is set server-side from authenticated user — ignore any client-provided value
         claim.setFiledAt(dto.getFiledAt());
         claim.setAmountClaimed(dto.getAmountClaimed());
         claim.setResolutionNotes(dto.getResolutionNotes());

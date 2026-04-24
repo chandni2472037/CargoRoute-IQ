@@ -34,6 +34,9 @@ public class BookingDTO {
 
     private BookingStatus status;
 
+    /** Populated by backend on read; ignored if sent by frontend. */
+    private Long createdByUserId;
+
     private LocalDateTime createdAt;
     
     // Default constructor
@@ -151,6 +154,14 @@ public class BookingDTO {
 
     public void setStatus(BookingStatus status) {
         this.status = status;
+    }
+
+    public Long getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public void setCreatedByUserId(Long createdByUserId) {
+        this.createdByUserId = createdByUserId;
     }
 
     public LocalDateTime getCreatedAt() {

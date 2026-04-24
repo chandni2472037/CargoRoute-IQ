@@ -6,8 +6,10 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,14 +30,19 @@ public class BookingController {
     private BookingService service; 
 
     @PostMapping("/addBooking")
-    public ResponseEntity<Map<String, String>> addBooking(@RequestBody BookingDTO b) {
-        service.createBooking(b);
+    public ResponseEntity<Map<String, String>> addBooking(
+            @RequestBody BookingDTO b,
+            Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        service.createBooking(b, userId);
         return new ResponseEntity<>(Map.of("message", "Booking created successfully."), HttpStatus.CREATED);
     }
 
     @GetMapping("/getBookings")
-    public ResponseEntity<List<BookingDTO>> fetchAllBookings() {
-        List<BookingDTO> bookings = service.getAllBookings();
+    public ResponseEntity<List<BookingDTO>> fetchAllBookings(Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        String role = extractRole(authentication);
+        List<BookingDTO> bookings = service.getAllBookings(userId, role);
         return ResponseEntity.ok(bookings);
     }
 
@@ -46,6 +53,7 @@ public class BookingController {
     }
 
     @PatchMapping("/updateBookingStatus/{id}")
+    @PreAuthorize("hasAnyRole('DISPATCHER','DRIVER','WAREHOUSEMANAGER')")
     public ResponseEntity<Map<String, String>> modifyBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String statusValue = body.get("status");
         if (statusValue == null || statusValue.isBlank()) {
@@ -76,5 +84,22 @@ public class BookingController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private Long extractUserId(Authentication authentication) {
+        if (authentication == null) return null;
+        Object creds = authentication.getCredentials();
+        if (!(creds instanceof String token)) return null;
+        return new com.example.demo.security.JwtUtil().extractUserId(token);
+    }
+
+    private String extractRole(Authentication authentication) {
+        if (authentication == null) return null;
+        return authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse(null);
     }
 }         

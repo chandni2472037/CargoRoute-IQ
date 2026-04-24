@@ -16,8 +16,7 @@ public class Claim {
     // Auto-incremented by the database (good fit for MySQL/PostgreSQL)
     private Long claimID;
 
-    // User/person who filed the claim 
-    private String filedBy;
+    private Long filedBy;
 
     @CreationTimestamp
     // Automatically populated on INSERT by Hibernate (do not set manually)
@@ -52,11 +51,11 @@ public class Claim {
         this.claimID = claimID;
     }
 
-    public String getFiledBy() {
+    public Long getFiledBy() {
         return filedBy;
     }
 
-    public void setFiledBy(String filedBy) {
+    public void setFiledBy(Long filedBy) {
         this.filedBy = filedBy;
     }
 

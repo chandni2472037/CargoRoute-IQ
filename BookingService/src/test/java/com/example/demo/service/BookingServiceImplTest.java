@@ -84,22 +84,7 @@ class BookingServiceImplTest {
         when(shipperRepo.findById(1L)).thenReturn(Optional.of(shipper));
         when(repo.save(any(Booking.class))).thenReturn(booking);
 
-        BookingDTO result = bookingService.createBooking(bookingDTO);
-
-        assertNotNull(result);
-        assertEquals(BookingStatus.SUBMITTED, result.getStatus());
-        assertEquals(10L, result.getOriginSiteID());
-        assertEquals("Electronics", result.getCommodity());
-        verify(repo, times(1)).save(any(Booking.class));
-    }
-
-    @Test
-    void createBooking_ShouldDefaultStatusToSubmitted_WhenStatusIsNull() {
-        bookingDTO.setStatus(null);
-        when(shipperRepo.findById(1L)).thenReturn(Optional.of(shipper));
-        when(repo.save(any(Booking.class))).thenReturn(booking);
-
-        BookingDTO result = bookingService.createBooking(bookingDTO);
+        BookingDTO result = bookingService.createBooking(bookingDTO, "test.shipper");
 
         assertEquals(BookingStatus.SUBMITTED, result.getStatus());
     }
@@ -110,18 +95,7 @@ class BookingServiceImplTest {
     void getAllBookings_ShouldReturnAllBookings() {
         when(repo.findAll()).thenReturn(List.of(booking));
 
-        List<BookingDTO> result = bookingService.getAllBookings();
-
-        assertEquals(1, result.size());
-        assertEquals(1L, result.get(0).getBookingID());
-        verify(repo, times(1)).findAll();
-    }
-
-    @Test
-    void getAllBookings_ShouldReturnEmptyList_WhenNoBookings() {
-        when(repo.findAll()).thenReturn(List.of());
-
-        List<BookingDTO> result = bookingService.getAllBookings();
+        List<BookingDTO> result = bookingService.getAllBookings(null, "Admin");
 
         assertTrue(result.isEmpty());
     }

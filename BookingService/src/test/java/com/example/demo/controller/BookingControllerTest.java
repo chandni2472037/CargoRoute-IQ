@@ -72,7 +72,7 @@ class BookingControllerTest {
 
     @Test
     void addBooking_ShouldReturn201_WhenCreated() throws Exception {
-        when(bookingService.createBooking(any(BookingDTO.class))).thenReturn(bookingDTO);
+        when(bookingService.createBooking(any(BookingDTO.class), any())).thenReturn(bookingDTO);
 
         mockMvc.perform(post("/cargoRoute/booking/addBooking")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -85,7 +85,7 @@ class BookingControllerTest {
 
     @Test
     void fetchAllBookings_ShouldReturn200_WithList() throws Exception {
-        when(bookingService.getAllBookings()).thenReturn(List.of(bookingDTO));
+        when(bookingService.getAllBookings(any(), any())).thenReturn(List.of(bookingDTO));
 
         mockMvc.perform(get("/cargoRoute/booking/getBookings"))
                 .andExpect(status().isOk())
@@ -95,7 +95,7 @@ class BookingControllerTest {
 
     @Test
     void fetchAllBookings_ShouldReturn200_WithEmptyList() throws Exception {
-        when(bookingService.getAllBookings()).thenReturn(List.of());
+        when(bookingService.getAllBookings(any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/cargoRoute/booking/getBookings"))
                 .andExpect(status().isOk())

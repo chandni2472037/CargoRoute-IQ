@@ -17,6 +17,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,11 +34,12 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private ShipperRepository shipperRepo;
 
-    // Save a new booking or update an existing booking
-    public BookingDTO createBooking(BookingDTO b){
+    // Save a new booking — createdByUserId is always set from the authenticated caller, never from the request body
+    public BookingDTO createBooking(BookingDTO b, Long createdByUserId) {
         if (b == null) {
             throw new BadRequestException("Booking request body must not be null");
         }
+
         if (b.getShipper() == null || b.getShipper().getShipperID() == null) {
             throw new BadRequestException("A valid shipper ID is required");
         }
@@ -78,14 +81,22 @@ public class BookingServiceImpl implements BookingService {
         if (b.getStatus() == null) {
             b.setStatus(BookingStatus.SUBMITTED);
         }
+        // Always override with server-derived owner — ignore whatever frontend may have sent
+        b.setCreatedByUserId(createdByUserId);
         Booking booking = convertToEntity(b);
         Booking saved = repo.save(booking);
         return convertToDTO(saved);
     }
 
-    // Fetch all bookings from the database
-    public List<BookingDTO> getAllBookings(){
-        return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+    // Fetch bookings: Admins see all; Shippers (and any other non-Admin role) see only their own
+    public List<BookingDTO> getAllBookings(Long userId, String role) {
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+        }
+        // Shipper and other roles: filter by creator userId
+        if (userId == null) return List.of();
+        return repo.findByCreatedByUserId(userId)
+                   .stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     // Fetch a single booking by ID
@@ -122,6 +133,15 @@ public class BookingServiceImpl implements BookingService {
     public Map<String, Object> importBookings(MultipartFile file) throws Exception {
         List<BookingDTO> imported = new ArrayList<>();
         List<String> errors = new ArrayList<>();
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = null;
+        if (auth != null && auth.getCredentials() instanceof String token) {
+            userId = new com.example.demo.security.JwtUtil().extractUserId(token);
+        }
+        if (userId == null) {
+            throw new org.springframework.security.access.AccessDeniedException("No authentication context found");
+        }
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
@@ -160,7 +180,8 @@ public class BookingServiceImpl implements BookingService {
                     if (p.length > 11 && !p[11].trim().isEmpty()) dto.setSpecialHandlingFlags(p[11].trim());
                     dto.setStatus(BookingStatus.SUBMITTED);
 
-                    imported.add(createBooking(dto));
+                    // CSV import: assign owner to authenticated user
+                    imported.add(createBooking(dto, userId));
 
                 } catch (Exception e) {
                     errors.add("Row " + rowNum + ": " + e.getMessage());
@@ -193,6 +214,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setCommodity(dto.getCommodity());
         booking.setSpecialHandlingFlags(dto.getSpecialHandlingFlags());
         booking.setStatus(dto.getStatus());
+        booking.setCreatedByUserId(dto.getCreatedByUserId());
         // createdAt is set by @CreationTimestamp
         return booking;
     }
@@ -213,6 +235,7 @@ public class BookingServiceImpl implements BookingService {
         dto.setCommodity(booking.getCommodity());
         dto.setSpecialHandlingFlags(booking.getSpecialHandlingFlags());
         dto.setStatus(booking.getStatus());
+        dto.setCreatedByUserId(booking.getCreatedByUserId());
         dto.setCreatedAt(booking.getCreatedAt());
         return dto;
     }

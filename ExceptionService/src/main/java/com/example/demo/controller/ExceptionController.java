@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,16 +29,18 @@ public class ExceptionController {
     private ExceptionService service; 
 
     @PostMapping("/addException")
-    // Create a new ExceptionRecord
-    public ResponseEntity<Map<String, String>> addException(@RequestBody ExceptionRecordDTO e) {
-        service.createException(e);
-        return new ResponseEntity<>(Map.of("message", "Exception reported successfully."), HttpStatus.CREATED);
+    // Create a new ExceptionRecord — allow Shipper and operational roles (Admin must not create)
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER')")
+    public ResponseEntity<ExceptionRecordDTO> addException(@RequestBody ExceptionRecordDTO e) {
+        ExceptionRecordDTO created = service.createException(e);
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @GetMapping("/getExceptions")
-    // Retrieve all ExceptionRecord entries
+    // Retrieve exceptions; SHIPPER sees only their own records
     public ResponseEntity<List<RequiredResponseDTO>> fetchAllExceptions() {
-        return ResponseEntity.ok(service.getAllExceptions());
+        List<RequiredResponseDTO> all = service.getAllExceptions();
+        return ResponseEntity.ok(all);
     }
 
     @GetMapping("/getExceptionByID/{id}")
@@ -51,7 +54,8 @@ public class ExceptionController {
     }
 
     @PatchMapping("/updateExceptionStatus/{id}")
-    // Partially update the exception: only the status field
+    // Partially update the exception: only the status field — only operational roles
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> modifyExceptionStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         if (id == null || id <= 0) {
             throw new BadRequestException("Exception ID must be a positive number.");

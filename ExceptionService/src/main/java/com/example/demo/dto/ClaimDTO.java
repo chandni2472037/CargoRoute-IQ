@@ -7,7 +7,7 @@ import com.example.demo.entity.enums.ClaimStatus;
 public class ClaimDTO {
 
     private Long claimID;
-    private String filedBy;
+    private Long filedBy;
     private LocalDateTime filedAt;
     private Double amountClaimed;
     private String resolutionNotes;
@@ -23,11 +23,11 @@ public class ClaimDTO {
         this.claimID = claimID;
     }
 
-    public String getFiledBy() {
+    public Long getFiledBy() {
         return filedBy;
     }
 
-    public void setFiledBy(String filedBy) {
+    public void setFiledBy(Long filedBy) {
         this.filedBy = filedBy;
     }
 

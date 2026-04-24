@@ -5,7 +5,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.dto.BookingDetailsDTO;
@@ -19,6 +22,8 @@ import com.example.demo.repository.ExceptionRepository;
 import com.example.demo.service.ExceptionService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 @Service
 public class ExceptionServiceImpl implements ExceptionService {
@@ -31,55 +36,125 @@ public class ExceptionServiceImpl implements ExceptionService {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Override
-    public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
-        if (dto == null) {
-            throw new BadRequestException("Exception request body must not be null");
-        }
-        if (dto.getBookingId() == null) {
-            throw new BadRequestException("Booking ID is required");
-        }
-        if (dto.getType() == null) {
-            throw new BadRequestException("Exception type is required. Valid values are: DELAY, DAMAGE, MISSING");
-        }
-      
-        if (dto.getStatus() == null) {
-            dto.setStatus(com.example.demo.entity.enums.ExceptionStatus.PENDING);
-        }
-
-        // Verify the booking exists in the Booking Service before saving
+    /**
+     * Resolve the authenticated user's numeric userId by calling IAM's
+     * internal lookup endpoint (permit-all). Falls back gracefully.
+     */
+    private Long resolveUserId(String email) {
         try {
-            BookingDetailsDTO booking = restTemplate.getForObject(
-                    "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/{id}",
-                    BookingDetailsDTO.class,
-                    dto.getBookingId()
+            // IAM InternalUserController: GET /internal/users/byEmail?email={email}
+            // Uses query param (not path var) so the '@' in emails is handled safely.
+            // This endpoint is under /internal/** which is permitAll() in IAM SecurityConfig.
+            com.example.demo.dto.InternalUserDTO user = restTemplate.getForObject(
+                    "http://IDENTITY-ACCESS-MANAGEMENT/internal/users/byEmail?email={email}",
+                    com.example.demo.dto.InternalUserDTO.class,
+                    email
             );
-            if (booking == null) {
-                throw new BadRequestException("Booking with ID " + dto.getBookingId() + " does not exist.");
+            if (user == null || user.getUserID() == null) {
+                throw new BadRequestException("Could not resolve userId for user: " + email);
             }
-        } catch (HttpClientErrorException.NotFound ex) {
-            throw new BadRequestException("Booking with ID " + dto.getBookingId() + " does not exist.");
+            return user.getUserID();
         } catch (BadRequestException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new BadRequestException("Could not verify Booking ID " + dto.getBookingId() + ". Please check the ID and try again.");
+            throw new BadRequestException("Could not contact IAM to resolve userId: " + ex.getMessage());
         }
+    }
 
-        ExceptionRecord exception = dtoToEntity(dto);
-        ExceptionRecord saved = repo.save(exception);
-        return entityToDto(saved);
+    @Override
+    @PreAuthorize("hasAnyRole('ADMIN', 'SHIPPER', 'DISPATCHER')")
+    public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
+        try {
+            if (dto == null) {
+                throw new BadRequestException("Exception request body must not be null");
+            }
+            if (dto.getBookingId() == null) {
+                throw new BadRequestException("Booking ID is required");
+            }
+            if (dto.getType() == null) {
+                throw new BadRequestException("Exception type is required. Valid values are: DELAY, DAMAGE, MISSING");
+            }
+            if (dto.getStatus() == null) {
+                dto.setStatus(com.example.demo.entity.enums.ExceptionStatus.PENDING);
+            }
+
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || authentication.getName() == null) {
+                throw new org.springframework.security.access.AccessDeniedException("No authentication context found");
+            }
+            String email = authentication.getName(); // JWT sub = email
+
+            // Resolve numeric userId from IAM — stored as reportedBy, never from frontend
+            Long userId = resolveUserId(email);
+
+            // Verify the booking exists in the Booking Service before saving
+            try {
+                BookingDetailsDTO booking = restTemplate.getForObject(
+                        "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/{id}",
+                        BookingDetailsDTO.class,
+                        dto.getBookingId()
+                );
+                if (booking == null) {
+                    throw new BadRequestException("Booking with ID " + dto.getBookingId() + " does not exist.");
+                }
+            } catch (HttpClientErrorException.NotFound ex) {
+                throw new BadRequestException("Booking with ID " + dto.getBookingId() + " does not exist.");
+            } catch (HttpClientErrorException ex) {
+                throw new BadRequestException("Booking Service returned error " + ex.getStatusCode() + " for Booking ID " + dto.getBookingId());
+            } catch (HttpServerErrorException ex) {
+                throw new BadRequestException("Booking Service is experiencing an error (" + ex.getStatusCode() + "). Please try again later.");
+            } catch (ResourceAccessException ex) {
+                throw new BadRequestException("Cannot reach Booking Service. Please ensure it is running and registered with Eureka.");
+            } catch (BadRequestException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                throw new BadRequestException("Could not verify Booking ID " + dto.getBookingId() + ": " + ex.getMessage());
+            }
+
+            ExceptionRecord exception = dtoToEntity(dto);
+            exception.setReportedBy(userId); // always from auth context, never from frontend
+            ExceptionRecord saved = repo.save(exception);
+            return entityToDto(saved);
+        } catch (org.springframework.security.access.AccessDeniedException ex) {
+            throw ex;
+        } catch (BadRequestException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BadRequestException("Failed to create exception: " + ex.getMessage());
+        }
     }
 
     @Override
     @CircuitBreaker(name = EXCEPTION_SERVICE_CB, fallbackMethod = "getAllExceptionsFallback")
     public List<RequiredResponseDTO> getAllExceptions() {
-        return repo.findAll()
-                .stream()
-                .map(e -> getExceptionById(e.getExceptionID()))
-                .collect(Collectors.toList());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String role = (authentication != null) ? authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse(null) : null;
+
+        if ("Admin".equals(role)) {
+            return repo.findAll()
+                    .stream()
+                    .map(e -> getExceptionById(e.getExceptionID()))
+                    .collect(Collectors.toList());
+        } else {
+            // Resolve current user's numeric ID to filter their own exceptions
+            String email = authentication != null ? authentication.getName() : null;
+            if (email == null) return List.of();
+            Long userId;
+            try {
+                userId = resolveUserId(email);
+            } catch (Exception e) {
+                return List.of();
+            }
+            return repo.findByReportedBy(userId)
+                    .stream()
+                    .map(e -> getExceptionById(e.getExceptionID()))
+                    .collect(Collectors.toList());
+        }
     }
 
-    // Fallback method
     public List<RequiredResponseDTO> getAllExceptionsFallback(Throwable t) {
         return repo.findAll().stream()
                 .map(e -> {
@@ -109,7 +184,6 @@ public class ExceptionServiceImpl implements ExceptionService {
                 );
                 response.setBookingdto(bookingDto);
             } catch (Exception e) {
-                // Booking may no longer exist or service is unavailable — return exception without booking details
                 response.setBookingdto(null);
             }
         }
@@ -117,7 +191,6 @@ public class ExceptionServiceImpl implements ExceptionService {
         return response;
     }
 
-    // Fallback method
     public RequiredResponseDTO getExceptionByIdFallback(Long id, Throwable t) {
         ExceptionRecord exception = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exception with ID " + id + " not found"));
@@ -153,7 +226,6 @@ public class ExceptionServiceImpl implements ExceptionService {
                 .collect(Collectors.toList());
     }
 
-    // Mapping methods
     private ExceptionRecordDTO entityToDto(ExceptionRecord exception) {
         ExceptionRecordDTO dto = new ExceptionRecordDTO();
         dto.setExceptionID(exception.getExceptionID());
@@ -171,11 +243,13 @@ public class ExceptionServiceImpl implements ExceptionService {
         ExceptionRecord exception = new ExceptionRecord();
         exception.setExceptionID(dto.getExceptionID());
         exception.setType(dto.getType());
-        exception.setReportedBy(dto.getReportedBy());
+        // reportedBy is NOT mapped from DTO — always set from auth context in createException
         exception.setReportedAt(dto.getReportedAt());
+        exception.setUpdatedAt(dto.getUpdatedAt());
         exception.setDescription(dto.getDescription());
         exception.setStatus(dto.getStatus());
         exception.setBookingId(dto.getBookingId());
         return exception;
     }
 }
+

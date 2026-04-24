@@ -20,8 +20,8 @@ public class ExceptionRecord {
     @Enumerated(EnumType.STRING) // Stores enum names as strings (e.g., DELAY, DAMAGE, MISSING)
     private ExceptionType type;
 
-    // Name or ID of person/user who reported the exception
-    private String reportedBy;
+    // Stores the numeric userId of the user who reported/created this exception
+    private Long reportedBy;
 
     @CreationTimestamp   // Automatically populated on INSERT — exception report creation time
     private LocalDateTime reportedAt;
@@ -50,8 +50,15 @@ public class ExceptionRecord {
     public ExceptionType getType() { return type; }
     public void setType(ExceptionType type) { this.type = type; }
 
-    public String getReportedBy() { return reportedBy; }
-    public void setReportedBy(String reportedBy) { this.reportedBy = reportedBy; }
+    public Long getReportedBy() {
+        return reportedBy;
+    }
+
+    public void setReportedBy(Long reportedBy) {
+        this.reportedBy = reportedBy;
+    }
+
+    
 
     public LocalDateTime getReportedAt() { return reportedAt; }
     public void setReportedAt(LocalDateTime reportedAt) { this.reportedAt = reportedAt; }

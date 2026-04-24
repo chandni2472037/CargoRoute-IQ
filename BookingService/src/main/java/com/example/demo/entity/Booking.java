@@ -57,6 +57,14 @@ public class Booking {
     @Enumerated(EnumType.STRING) // Store enum as String in DB (e.g., NEW, CONFIRMED, CANCELLED) for readability and schema stability
     private BookingStatus status;
 
+    /**
+     * IAM username (JWT 'sub') of the user who created this booking.
+     * Set server-side during booking creation — never accepted from the frontend.
+     * Used to enforce Shipper-level visibility: Shippers only see bookings they created.
+     */
+    @Column(name = "created_by_user_id")
+    private Long createdByUserId;
+
     @CreationTimestamp // Automatically set on insert by Hibernate; do not manually set in code
     private LocalDateTime createdAt;
     
@@ -175,6 +183,14 @@ public class Booking {
 
     public void setStatus(BookingStatus status) {
         this.status = status;
+    }
+
+    public Long getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public void setCreatedByUserId(Long createdByUserId) {
+        this.createdByUserId = createdByUserId;
     }
 
     public LocalDateTime getCreatedAt() {
