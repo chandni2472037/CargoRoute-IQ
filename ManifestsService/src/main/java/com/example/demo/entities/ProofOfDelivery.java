@@ -17,7 +17,7 @@ public class ProofOfDelivery {
    
    private Long bookingID; 
    
-   @CreationTimestamp
+
    private LocalDateTime deliveredAt; 
 
    private String receivedBy; 

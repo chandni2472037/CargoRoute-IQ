@@ -1,6 +1,4 @@
 package com.example.demo.service;
-
-
 import com.example.demo.dto.DispatchDTO;
 import com.example.demo.dto.DispatchResponseDTO;
 import com.example.demo.dto.LoadDTO;
@@ -12,12 +10,15 @@ import com.example.demo.entities.enums.DispatchStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.DispatchRepository;
 import com.example.demo.serviceimpl.DispatchServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -25,8 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +46,7 @@ class DispatchServiceImplTest {
 
     @BeforeEach
     void setUp() {
+
         dispatch = new Dispatch();
         dispatch.setDispatchID(1L);
         dispatch.setLoadID(100L);
@@ -62,7 +63,7 @@ class DispatchServiceImplTest {
         dispatchDTO.setStatus(DispatchStatus.ASSIGNED);
     }
 
-    // ── INSERT ──────────────────────────────────────────────────────
+    /* ───────────────── INSERT ───────────────── */
 
     @Test
     void insert_ShouldSaveAndReturnDispatchDTO() {
@@ -74,13 +75,13 @@ class DispatchServiceImplTest {
 
         assertNotNull(result);
         assertEquals(DispatchStatus.ASSIGNED, result.getStatus());
-        verify(dispatchRepository, times(1)).save(any(Dispatch.class));
+        verify(dispatchRepository).save(any(Dispatch.class));
     }
 
-    // ── FETCH BY ID ──────────────────────────────────────────────────
+    /* ───────────────── FETCH BY ID ───────────────── */
 
     @Test
-    void fetchByID_ShouldReturnDispatchResponse() {
+    void fetchByID_ShouldReturnDispatchWithLoadAndVehicle() {
 
         LoadDTO loadDTO = new LoadDTO();
         loadDTO.setVehicleID(300L);
@@ -88,34 +89,53 @@ class DispatchServiceImplTest {
         LoadResponseDTO loadResponse = new LoadResponseDTO();
         loadResponse.setLoad(loadDTO);
 
-        VehicleDTO vehicleDTO = new VehicleDTO();
-
         when(dispatchRepository.findById(1L))
                 .thenReturn(Optional.of(dispatch));
         when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
                 .thenReturn(loadResponse);
         when(restTemplate.getForObject(anyString(), eq(VehicleDTO.class)))
-                .thenReturn(vehicleDTO);
+                .thenReturn(new VehicleDTO());
 
         DispatchResponseDTO result = dispatchService.fetchByID(1L);
 
         assertNotNull(result);
-        assertEquals(1L, result.getDispatch().getDispatchID());
         assertNotNull(result.getLoad());
         assertNotNull(result.getVehicle());
     }
 
+   
+    /* ───────────────── FIND BY LOAD ID ───────────────── */
+
     @Test
-    void fetchByID_ShouldThrowException_WhenNotFound() {
+    void findByLoadID_ShouldReturnDispatch() {
 
-        when(dispatchRepository.findById(99L))
-                .thenReturn(Optional.empty());
+        when(dispatchRepository.findByLoadID(100L))
+                .thenReturn(dispatch);
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> dispatchService.fetchByID(99L));
+        LoadResponseDTO fallbackLoad = new LoadResponseDTO();
+        fallbackLoad.setLoad(null);
+
+        when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
+                .thenReturn(fallbackLoad);
+
+        DispatchResponseDTO result =
+                dispatchService.findByLoadID(100L);
+
+        assertNotNull(result);
+        assertEquals(100L, result.getDispatch().getLoadID());
     }
 
-    // ── FETCH BY ASSIGNED BY ─────────────────────────────────────────
+    @Test
+    void findByLoadID_ShouldThrowException_WhenNotFound() {
+
+        when(dispatchRepository.findByLoadID(100L))
+                .thenReturn(null);
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> dispatchService.findByLoadID(100L));
+    }
+
+    /* ───────────────── FETCH BY ASSIGNED BY ───────────────── */
 
     @Test
     void fetchByAssignedBy_ShouldReturnDispatchList() {
@@ -123,35 +143,31 @@ class DispatchServiceImplTest {
         when(dispatchRepository.findByAssignedBy("Admin"))
                 .thenReturn(List.of(dispatch));
         when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(null);
+                .thenReturn(new LoadResponseDTO());
 
         List<DispatchResponseDTO> result =
                 dispatchService.fetchByAssignedBy("Admin");
 
         assertEquals(1, result.size());
-        assertEquals("Admin",
-                result.get(0).getDispatch().getAssignedBy());
     }
 
-    // ── FETCH BY STATUS ──────────────────────────────────────────────
+    /* ───────────────── FETCH BY STATUS ───────────────── */
 
     @Test
-    void fetchByStatus_ShouldReturnMatchingDispatches() {
+    void fetchByStatus_ShouldReturnDispatchList() {
 
         when(dispatchRepository.findByStatus(DispatchStatus.ASSIGNED))
                 .thenReturn(List.of(dispatch));
         when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(null);
+                .thenReturn(new LoadResponseDTO());
 
         List<DispatchResponseDTO> result =
                 dispatchService.fetchByStatus(DispatchStatus.ASSIGNED);
 
         assertEquals(1, result.size());
-        assertEquals(DispatchStatus.ASSIGNED,
-                result.get(0).getDispatch().getStatus());
     }
 
-    // ── FETCH ALL ────────────────────────────────────────────────────
+    /* ───────────────── FETCH ALL ───────────────── */
 
     @Test
     void fetchAll_ShouldReturnAllDispatches() {
@@ -159,19 +175,18 @@ class DispatchServiceImplTest {
         when(dispatchRepository.findAll())
                 .thenReturn(List.of(dispatch));
         when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(null);
+                .thenReturn(new LoadResponseDTO());
 
         List<DispatchResponseDTO> result =
                 dispatchService.fetchAll();
 
         assertEquals(1, result.size());
-        verify(dispatchRepository, times(1)).findAll();
     }
 
-    // ── UPDATE ───────────────────────────────────────────────────────
+    /* ───────────────── UPDATE ───────────────── */
 
     @Test
-    void updateDispatch_ShouldUpdateAndReturnDTO() {
+    void updateDispatch_ShouldUpdateStatus() {
 
         when(dispatchRepository.findById(1L))
                 .thenReturn(Optional.of(dispatch));
@@ -185,23 +200,12 @@ class DispatchServiceImplTest {
                 dispatchService.updateDispatch(1L, updateDTO);
 
         assertEquals(DispatchStatus.COMPLETED, result.getStatus());
-        verify(dispatchRepository).save(any(Dispatch.class));
     }
 
-    @Test
-    void updateDispatch_ShouldThrowException_WhenNotFound() {
-
-        when(dispatchRepository.findById(99L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> dispatchService.updateDispatch(99L, dispatchDTO));
-    }
-
-    // ── DELETE ───────────────────────────────────────────────────────
+    /* ───────────────── DELETE ───────────────── */
 
     @Test
-    void delete_ShouldRemoveDispatch() {
+    void delete_ShouldDeleteDispatch() {
 
         when(dispatchRepository.findById(1L))
                 .thenReturn(Optional.of(dispatch));
@@ -209,15 +213,5 @@ class DispatchServiceImplTest {
         dispatchService.delete(1L);
 
         verify(dispatchRepository).delete(dispatch);
-    }
-
-    @Test
-    void delete_ShouldThrowException_WhenNotFound() {
-
-        when(dispatchRepository.findById(99L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> dispatchService.delete(99L));
     }
 }

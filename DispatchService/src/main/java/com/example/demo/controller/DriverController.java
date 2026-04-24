@@ -22,10 +22,8 @@ public class DriverController {
     @PostMapping("/createDriver")
     public ResponseEntity<Map<String, String>> create(@RequestBody DriverDTO dto) {
         driverService.insert(dto);
-        return new ResponseEntity<>(
-                Map.of("message", "Driver created successfully."),
-                HttpStatus.CREATED
-        );
+        return new ResponseEntity<>(Map.of("message", "Driver created successfully."),
+                HttpStatus.CREATED);
     }
 
     //GET DRIVER BY ID
@@ -37,11 +35,7 @@ public class DriverController {
     //GET DRIVERS BY STATUS
     @GetMapping("/getDriverByStatus/{status}")
     public ResponseEntity<List<DriverDTO>> getByStatus(@PathVariable String status) {
-        return ResponseEntity.ok(
-                driverService.fetchByStatus(
-                        DriverStatus.valueOf(status.toUpperCase())
-                )
-        );
+        return ResponseEntity.ok(driverService.fetchByStatus(DriverStatus.valueOf(status.toUpperCase())));
     }
 
     //GET ALL DRIVERS
@@ -52,22 +46,15 @@ public class DriverController {
 
     //UPDATE DRIVER
     @PutMapping("/updateDriver/{driverID}")
-    public ResponseEntity<Map<String, String>> update(
-            @PathVariable Long driverID,
-            @RequestBody DriverDTO dto
-    ) {
+    public ResponseEntity<Map<String, String>> update(@PathVariable Long driverID, @RequestBody DriverDTO dto) {
         driverService.updateDriver(driverID, dto);
-        return ResponseEntity.ok(
-                Map.of("message", "Driver updated successfully.")
-        );
+        return ResponseEntity.ok(Map.of("message", "Driver updated successfully."));
     }
 
     //DELETE DRIVER
     @DeleteMapping("/deleteById/{driverID}")
     public ResponseEntity<Map<String, String>> delete(@PathVariable Long driverID) {
         driverService.delete(driverID);
-        return ResponseEntity.ok(
-                Map.of("message", "Driver deleted successfully.")
-        );
+        return ResponseEntity.ok(Map.of("message", "Driver deleted successfully."));
     }
 }

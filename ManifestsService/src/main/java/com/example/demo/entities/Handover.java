@@ -2,8 +2,6 @@ package com.example.demo.entities;
 import jakarta.persistence.*; 
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp; 
-
 @Entity 
 public class Handover { 
 
@@ -18,7 +16,6 @@ public class Handover {
    
    private String handedBy; 
 
-   @CreationTimestamp
    private LocalDateTime handedAt; 
 
    private String receivedBy; 

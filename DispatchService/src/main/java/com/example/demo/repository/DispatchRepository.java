@@ -10,6 +10,8 @@ import com.example.demo.entities.enums.DispatchStatus;
 @Repository
 public interface DispatchRepository extends JpaRepository<Dispatch,Long>{ 
 	 
+	 Dispatch findByLoadID(Long loadID);
+	 
 	 List<Dispatch> findByAssignedBy(String assignedBy);
 	 
 	 List<Dispatch> findByStatus(DispatchStatus status);

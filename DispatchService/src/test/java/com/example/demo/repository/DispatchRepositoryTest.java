@@ -36,30 +36,12 @@ class DispatchRepositoryTest {
     private Dispatch dispatch2;
     private Dispatch dispatch3;
 
-    // Setup
     @BeforeEach
     void setUp() {
 
-        dispatch1 = buildDispatch(
-                1001L,
-                501L,
-                "Alice",
-                DispatchStatus.ASSIGNED
-        );
-
-        dispatch2 = buildDispatch(
-                1002L,
-                502L,
-                "Bob",
-                DispatchStatus.IN_PROGRESS
-        );
-
-        dispatch3 = buildDispatch(
-                1003L,
-                503L,
-                "Alice",
-                DispatchStatus.ASSIGNED
-        );
+        dispatch1 = buildDispatch(1001L, 501L, "Alice", DispatchStatus.ASSIGNED);
+        dispatch2 = buildDispatch(1002L, 502L, "Bob", DispatchStatus.IN_PROGRESS);
+        dispatch3 = buildDispatch(1003L, 503L, "Alice", DispatchStatus.ASSIGNED);
 
         entityManager.persist(dispatch1);
         entityManager.persist(dispatch2);
@@ -67,7 +49,6 @@ class DispatchRepositoryTest {
         entityManager.flush();
     }
 
-    // Helper
     private Dispatch buildDispatch(
             Long loadId,
             Long driverId,
@@ -83,15 +64,14 @@ class DispatchRepositoryTest {
         return dispatch;
     }
 
-    // Save / FindById
+    // ───────────────── Save / FindById ─────────────────
+
     @Test
-    @DisplayName("Save dispatch — persists and auto-generates ID")
+    @DisplayName("Save dispatch — auto-generates ID")
     void testSaveDispatch() {
+
         Dispatch dispatch = buildDispatch(
-                2001L,
-                601L,
-                "Charlie",
-                DispatchStatus.CREATED
+                2001L, 601L, "Charlie", DispatchStatus.CREATED
         );
 
         Dispatch saved = dispatchRepository.save(dispatch);
@@ -105,6 +85,7 @@ class DispatchRepositoryTest {
     @Test
     @DisplayName("Find dispatch by ID — found")
     void testFindById_Found() {
+
         Optional<Dispatch> found =
                 dispatchRepository.findById(dispatch1.getDispatchID());
 
@@ -115,26 +96,43 @@ class DispatchRepositoryTest {
     @Test
     @DisplayName("Find dispatch by ID — not found")
     void testFindById_NotFound() {
+
         Optional<Dispatch> found =
                 dispatchRepository.findById(9999L);
 
         assertThat(found).isNotPresent();
     }
 
-    // Find All
-    @Test
-    @DisplayName("Find all dispatches — returns all persisted records")
-    void testFindAll() {
-        List<Dispatch> all = dispatchRepository.findAll();
+    // ───────────────── Find All ─────────────────
 
+    @Test
+    @DisplayName("Find all dispatches")
+    void testFindAll() {
+
+        List<Dispatch> all = dispatchRepository.findAll();
         assertThat(all).hasSize(3);
     }
 
-  
-    // findByAssignedBy
+    // ✅ ✅ ✅ FIXED TEST ✅ ✅ ✅
+    // ───────────────── findByLoadID ─────────────────
+
     @Test
-    @DisplayName("findByAssignedBy — returns matching dispatches")
+    @DisplayName("findByLoadID — returns matching dispatch")
+    void testFindByLoadID() {
+
+        Dispatch result =
+                dispatchRepository.findByLoadID(1001L);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getAssignedBy()).isEqualTo("Alice");
+    }
+
+    // ───────────────── findByAssignedBy ─────────────────
+
+    @Test
+    @DisplayName("findByAssignedBy — returns matches")
     void testFindByAssignedBy() {
+
         List<Dispatch> results =
                 dispatchRepository.findByAssignedBy("Alice");
 
@@ -144,23 +142,23 @@ class DispatchRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByAssignedBy — empty list when no match")
+    @DisplayName("findByAssignedBy — empty result")
     void testFindByAssignedBy_NoResults() {
+
         List<Dispatch> results =
                 dispatchRepository.findByAssignedBy("Unknown");
 
         assertThat(results).isEmpty();
     }
 
-  
-    // findByStatus
+    // ───────────────── findByStatus ─────────────────
+
     @Test
-    @DisplayName("findByStatus — returns matching dispatches")
+    @DisplayName("findByStatus — ASSIGNED")
     void testFindByStatus_Assigned() {
+
         List<Dispatch> assigned =
-                dispatchRepository.findByStatus(
-                        DispatchStatus.ASSIGNED
-                );
+                dispatchRepository.findByStatus(DispatchStatus.ASSIGNED);
 
         assertThat(assigned).hasSize(2);
         assertThat(assigned)
@@ -168,60 +166,54 @@ class DispatchRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByStatus — single match")
+    @DisplayName("findByStatus — IN_PROGRESS")
     void testFindByStatus_InProgress() {
+
         List<Dispatch> inProgress =
-                dispatchRepository.findByStatus(
-                        DispatchStatus.IN_PROGRESS
-                );
+                dispatchRepository.findByStatus(DispatchStatus.IN_PROGRESS);
 
         assertThat(inProgress).hasSize(1);
-        assertThat(inProgress.get(0).getAssignedBy())
-                .isEqualTo("Bob");
+        assertThat(inProgress.get(0).getAssignedBy()).isEqualTo("Bob");
     }
 
     @Test
-    @DisplayName("findByStatus — empty list when no match")
+    @DisplayName("findByStatus — empty result")
     void testFindByStatus_NoResults() {
+
         List<Dispatch> cancelled =
-                dispatchRepository.findByStatus(
-                        DispatchStatus.CANCELLED
-                );
+                dispatchRepository.findByStatus(DispatchStatus.CANCELLED);
 
         assertThat(cancelled).isEmpty();
     }
 
-    // Delete
+    // ───────────────── Delete / Count / Exists ─────────────────
+
     @Test
-    @DisplayName("Delete dispatch by ID — record no longer exists")
+    @DisplayName("Delete dispatch by ID")
     void testDeleteById() {
+
         Long id = dispatch2.getDispatchID();
 
         dispatchRepository.deleteById(id);
         entityManager.flush();
 
-        assertThat(dispatchRepository.findById(id))
-                .isNotPresent();
+        assertThat(dispatchRepository.findById(id)).isNotPresent();
     }
 
-    // Count / Exists
     @Test
-    @DisplayName("Count — returns correct number of dispatches")
+    @DisplayName("Count dispatches")
     void testCount() {
+
         assertThat(dispatchRepository.count()).isEqualTo(3);
     }
 
     @Test
-    @DisplayName("ExistsById — true for existing, false for unknown")
+    @DisplayName("ExistsById — true & false cases")
     void testExistsById() {
-        assertThat(
-                dispatchRepository.existsById(
-                        dispatch1.getDispatchID()
-                )
-        ).isTrue();
 
-        assertThat(
-                dispatchRepository.existsById(8888L)
-        ).isFalse();
+        assertThat(dispatchRepository.existsById(
+                dispatch1.getDispatchID())).isTrue();
+
+        assertThat(dispatchRepository.existsById(8888L)).isFalse();
     }
 }

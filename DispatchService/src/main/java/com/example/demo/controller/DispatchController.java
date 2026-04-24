@@ -21,15 +21,18 @@ public class DispatchController {
 
     //CREATE 
     @PostMapping("/createDispatch")
-    public ResponseEntity<Map<String, String>> createDispatch(
-            @RequestBody DispatchDTO dispatchDTO) {
+    public ResponseEntity<Map<String, String>> createDispatch(@RequestBody DispatchDTO dispatchDTO) {
 
         dispatchService.insert(dispatchDTO);
+        return new ResponseEntity<>(Map.of("message", "Dispatch created successfully."),
+                HttpStatus.CREATED);
+    }
+    
+    //Get dispatch by Load ID
+    @GetMapping("/getDispatchByLoadId/{loadId}")
+    public ResponseEntity<DispatchResponseDTO> getDispatchByLoadId(@PathVariable Long loadId) {
 
-        return new ResponseEntity<>(
-                Map.of("message", "Dispatch created successfully."),
-                HttpStatus.CREATED
-        );
+        return ResponseEntity.ok(dispatchService.findByLoadID(loadId));
     }
 
     //FETCH
@@ -37,31 +40,27 @@ public class DispatchController {
     public ResponseEntity<DispatchResponseDTO> getDispatchById(
             @PathVariable Long dispatchId) {
 
-        return ResponseEntity.ok(
-                dispatchService.fetchByID(dispatchId));
+        return ResponseEntity.ok(dispatchService.fetchByID(dispatchId));
     }
 
     @GetMapping("/getAssigned-by/{assignedBy}")
     public ResponseEntity<List<DispatchResponseDTO>> getDispatchByAssignedBy(
             @PathVariable String assignedBy) {
 
-        return ResponseEntity.ok(
-                dispatchService.fetchByAssignedBy(assignedBy));
+        return ResponseEntity.ok(dispatchService.fetchByAssignedBy(assignedBy));
     }
 
     @GetMapping("/getDispatchByStatus/{status}")
     public ResponseEntity<List<DispatchResponseDTO>> getDispatchByStatus(
             @PathVariable DispatchStatus status) {
 
-        return ResponseEntity.ok(
-                dispatchService.fetchByStatus(status));
+        return ResponseEntity.ok(dispatchService.fetchByStatus(status));
     }
 
     @GetMapping("/getAllDispatches")
     public ResponseEntity<List<DispatchResponseDTO>> getAllDispatches() {
 
-        return ResponseEntity.ok(
-                dispatchService.fetchAll());
+        return ResponseEntity.ok(dispatchService.fetchAll());
     }
 
     //UPDATE
@@ -72,9 +71,7 @@ public class DispatchController {
 
         dispatchService.updateDispatch(dispatchId, dispatchDTO);
 
-        return ResponseEntity.ok(
-                Map.of("message", "Dispatch updated successfully.")
-        );
+        return ResponseEntity.ok(Map.of("message", "Dispatch updated successfully."));
     }
 
     //DELETE
@@ -84,8 +81,6 @@ public class DispatchController {
 
         dispatchService.delete(dispatchId);
 
-        return ResponseEntity.ok(
-                Map.of("message", "Dispatch deleted successfully.")
-        );
+        return ResponseEntity.ok(Map.of("message", "Dispatch deleted successfully."));
     }
 }

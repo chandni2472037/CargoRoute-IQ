@@ -1,6 +1,4 @@
 package com.example.demo.service;
-
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -31,8 +29,8 @@ class DriverServiceImplTest {
     @InjectMocks
     private DriverServiceImpl driverService;
 
-    // ---------- Helper Method ----------
-    private Driver getDriverEntity() {
+    // ---------- Helper ----------
+    private Driver mockDriver() {
         Driver driver = new Driver();
         driver.setDriverID(1L);
         driver.setName("Sai");
@@ -45,7 +43,7 @@ class DriverServiceImplTest {
 
     // ---------- INSERT ----------
     @Test
-    void insert_ShouldSaveDriverSuccessfully() {
+    void insert_shouldSaveDriver_whenValid() {
 
         DriverDTO dto = new DriverDTO();
         dto.setName("Sai");
@@ -53,18 +51,17 @@ class DriverServiceImplTest {
         dto.setStatus(DriverStatus.AVAILABLE);
 
         when(driverRepository.save(any(Driver.class)))
-                .thenReturn(getDriverEntity());
+                .thenReturn(mockDriver());
 
-        DriverDTO saved = driverService.insert(dto);
+        DriverDTO result = driverService.insert(dto);
 
-        assertNotNull(saved);
-        assertEquals("Sai", saved.getName());
+        assertNotNull(result);
+        assertEquals("Sai", result.getName());
         verify(driverRepository, times(1)).save(any(Driver.class));
     }
 
     @Test
-    void insert_ShouldThrowBadRequestException_WhenNameIsNull() {
-
+    void insert_shouldThrowException_whenNameIsNull() {
         DriverDTO dto = new DriverDTO();
 
         assertThrows(BadRequestException.class,
@@ -73,10 +70,10 @@ class DriverServiceImplTest {
 
     // ---------- FETCH BY ID ----------
     @Test
-    void fetchByID_ShouldReturnDriver_WhenExists() {
+    void fetchByID_shouldReturnDriver_whenExists() {
 
         when(driverRepository.findById(1L))
-                .thenReturn(Optional.of(getDriverEntity()));
+                .thenReturn(Optional.of(mockDriver()));
 
         DriverDTO dto = driverService.fetchByID(1L);
 
@@ -85,7 +82,7 @@ class DriverServiceImplTest {
     }
 
     @Test
-    void fetchByID_ShouldThrowException_WhenNotFound() {
+    void fetchByID_shouldThrowException_whenNotFound() {
 
         when(driverRepository.findById(1L))
                 .thenReturn(Optional.empty());
@@ -96,36 +93,36 @@ class DriverServiceImplTest {
 
     // ---------- FETCH BY STATUS ----------
     @Test
-    void fetchByStatus_ShouldReturnDrivers() {
+    void fetchByStatus_shouldReturnList() {
 
         when(driverRepository.findByStatus(DriverStatus.AVAILABLE))
-                .thenReturn(Arrays.asList(getDriverEntity()));
+                .thenReturn(Arrays.asList(mockDriver()));
 
-        List<DriverDTO> list =
+        List<DriverDTO> result =
                 driverService.fetchByStatus(DriverStatus.AVAILABLE);
 
-        assertEquals(1, list.size());
-        assertEquals(DriverStatus.AVAILABLE, list.get(0).getStatus());
+        assertEquals(1, result.size());
+        assertEquals(DriverStatus.AVAILABLE, result.get(0).getStatus());
     }
 
     // ---------- FETCH ALL ----------
     @Test
-    void fetchAll_ShouldReturnAllDrivers() {
+    void fetchAll_shouldReturnAllDrivers() {
 
         when(driverRepository.findAll())
-                .thenReturn(Arrays.asList(getDriverEntity()));
+                .thenReturn(Arrays.asList(mockDriver()));
 
-        List<DriverDTO> list = driverService.fetchAll();
+        List<DriverDTO> result = driverService.fetchAll();
 
-        assertEquals(1, list.size());
+        assertEquals(1, result.size());
         verify(driverRepository).findAll();
     }
 
     // ---------- UPDATE ----------
     @Test
-    void updateDriver_ShouldUpdateSuccessfully() {
+    void updateDriver_shouldUpdateAllowedFieldsOnly() {
 
-        Driver existing = getDriverEntity();
+        Driver existing = mockDriver();
 
         when(driverRepository.findById(1L))
                 .thenReturn(Optional.of(existing));
@@ -136,15 +133,17 @@ class DriverServiceImplTest {
         updateDTO.setMobileNumber("9999999999");
         updateDTO.setStatus(DriverStatus.ON_ROUTE);
 
-        DriverDTO updated =
-                driverService.updateDriver(1L, updateDTO);
+        DriverDTO updated = driverService.updateDriver(1L, updateDTO);
 
         assertEquals("9999999999", updated.getMobileNumber());
         assertEquals(DriverStatus.ON_ROUTE, updated.getStatus());
+
+        // ✅ License number remains unchanged
+        assertEquals("LIC123", updated.getLicenseNo());
     }
 
     @Test
-    void updateDriver_ShouldThrowException_WhenNotFound() {
+    void updateDriver_shouldThrowException_whenNotFound() {
 
         when(driverRepository.findById(1L))
                 .thenReturn(Optional.empty());
@@ -155,10 +154,10 @@ class DriverServiceImplTest {
 
     // ---------- DELETE ----------
     @Test
-    void delete_ShouldRemoveDriverSuccessfully() {
+    void delete_shouldDeleteDriver_whenExists() {
 
         when(driverRepository.findById(1L))
-                .thenReturn(Optional.of(getDriverEntity()));
+                .thenReturn(Optional.of(mockDriver()));
 
         driverService.delete(1L);
 
@@ -166,7 +165,7 @@ class DriverServiceImplTest {
     }
 
     @Test
-    void delete_ShouldThrowException_WhenNotFound() {
+    void delete_shouldThrowException_whenNotFound() {
 
         when(driverRepository.findById(1L))
                 .thenReturn(Optional.empty());

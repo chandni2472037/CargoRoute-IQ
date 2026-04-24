@@ -5,17 +5,20 @@ import com.example.demo.dto.DispatchDTO;
 import com.example.demo.dto.DispatchResponseDTO;
 import com.example.demo.entities.enums.DispatchStatus;
 import com.example.demo.exception.GlobalExceptionHandler;
-
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.service.DispatchService;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -64,7 +67,7 @@ class DispatchControllerTest {
         responseDTO.setDispatch(dispatchDTO);
     }
 
-    //POST /cargoRoute/dispatches/createDispatch 
+    // CREATE
     @Test
     void createDispatch_ShouldReturn201_WhenCreated() throws Exception {
 
@@ -75,9 +78,22 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$.message")
                         .value("Dispatch created successfully."));
     }
-    
-    
-    //GET /cargoRoute/dispatches/getDispatchById/{id} 
+
+    // ✅ ✅ ✅ FIXED TEST ✅ ✅ ✅
+    // GET DISPATCH BY LOAD ID (single object)
+    @Test
+    void getDispatchByLoadId_ShouldReturn200_WhenFound() throws Exception {
+
+        when(dispatchService.findByLoadID(100L))
+                .thenReturn(responseDTO);
+
+        mockMvc.perform(get("/cargoRoute/dispatches/getDispatchByLoadId/100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dispatch.loadID").value(100))
+                .andExpect(jsonPath("$.dispatch.assignedBy").value("Admin"));
+    }
+
+    // FETCH BY ID
     @Test
     void getDispatchById_ShouldReturn200_WhenFound() throws Exception {
 
@@ -100,8 +116,7 @@ class DispatchControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    //GET /cargoRoute/dispatches/getAssigned-by/{assignedBy} 
-
+    // FETCH BY ASSIGNED BY
     @Test
     void getDispatchByAssignedBy_ShouldReturn200_WithList() throws Exception {
 
@@ -114,8 +129,7 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$[0].dispatch.assignedBy").value("Admin"));
     }
 
-    //GET /cargoRoute/dispatches/getDispatchByStatus/{status} 
-
+    // FETCH BY STATUS
     @Test
     void getDispatchByStatus_ShouldReturn200_WithList() throws Exception {
 
@@ -124,12 +138,10 @@ class DispatchControllerTest {
 
         mockMvc.perform(get("/cargoRoute/dispatches/getDispatchByStatus/ASSIGNED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].dispatch.status")
-                        .value("ASSIGNED"));
+                .andExpect(jsonPath("$[0].dispatch.status").value("ASSIGNED"));
     }
 
-    //GET /cargoRoute/dispatches/getAllDispatches 
-
+    // FETCH ALL
     @Test
     void getAllDispatches_ShouldReturn200_WithList() throws Exception {
 
@@ -141,7 +153,7 @@ class DispatchControllerTest {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
-    //PUT /cargoRoute/dispatches/updateDispatch/{id} 
+    // UPDATE
     @Test
     void updateDispatch_ShouldReturn200_WhenUpdated() throws Exception {
 
@@ -153,8 +165,7 @@ class DispatchControllerTest {
                         .value("Dispatch updated successfully."));
     }
 
-    //DELETE /cargoRoute/dispatches/DeleteDispatch/{id} 
-
+    // DELETE
     @Test
     void deleteDispatch_ShouldReturn200_WhenDeleted() throws Exception {
 

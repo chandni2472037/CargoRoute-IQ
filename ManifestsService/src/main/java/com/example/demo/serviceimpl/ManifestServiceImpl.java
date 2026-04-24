@@ -1,13 +1,13 @@
 package com.example.demo.serviceimpl;
 import java.util.ArrayList;
 import java.util.List;
- 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
- 
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
- 
+
 import com.example.demo.dto.LoadDTO;
 import com.example.demo.dto.LoadResponseDTO;
 import com.example.demo.dto.ManifestDTO;
@@ -17,122 +17,139 @@ import com.example.demo.entities.Manifest;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ManifestRepository;
 import com.example.demo.service.ManifestService;
- 
+
 @Service
 public class ManifestServiceImpl implements ManifestService {
- 
+
     private static final String MANIFEST_CB = "manifestService";
- 
+
     @Autowired
     private ManifestRepository manifestRepository;
- 
+
     @Autowired
     private RestTemplate restTemplate;
- 
+
     private static final String LOAD_SERVICE_URL =
-    		"http://ROUTING-SERVICE/cargoRoute/loads/getLoad/";
- 
+            "http://ROUTING-SERVICE/cargoRoute/loads/getLoad/";
+
     private static final String FLEET_SERVICE_URL =
-    		"http://FLEET-SERVICE/cargoRoute/vehicles/getVehicle/";
- 
-    //CREATE 
- 
+            "http://FLEET-SERVICE/cargoRoute/vehicles/getVehicle/";
+
+    // ================= CREATE =================
     @Override
     public ManifestDTO create(ManifestDTO manifestDTO) {
         Manifest manifest = convertToEntity(manifestDTO);
         return convertToDTO(manifestRepository.save(manifest));
     }
- 
-    //FETCH
- 
+
+    // ================= FETCH BY ID =================
     @Override
     @CircuitBreaker(name = MANIFEST_CB, fallbackMethod = "getByIdFallback")
     public ManifestRequiredResponseDTO getById(Long manifestID) {
         return buildResponse(findManifest(manifestID));
     }
- 
+
     public ManifestRequiredResponseDTO getByIdFallback(Long manifestID, Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full manifest response for ID = " + manifestID);
         ManifestRequiredResponseDTO response = new ManifestRequiredResponseDTO();
         response.setManifest(convertToDTO(findManifest(manifestID)));
         response.setLoad(null);
         response.setVehicle(null);
         return response;
     }
- 
+
+    // ================= FETCH ALL =================
     @Override
     @CircuitBreaker(name = MANIFEST_CB, fallbackMethod = "getAllFallback")
     public List<ManifestRequiredResponseDTO> getAll() {
-        List<Manifest> manifests = manifestRepository.findAll();
+
         List<ManifestRequiredResponseDTO> responses = new ArrayList<>();
- 
-        for (Manifest manifest : manifests) {
+        for (Manifest manifest : manifestRepository.findAll()) {
             responses.add(buildResponse(manifest));
         }
         return responses;
     }
- 
+
     public List<ManifestRequiredResponseDTO> getAllFallback(Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full manifest list, returning partial data");
+
         List<ManifestRequiredResponseDTO> responses = new ArrayList<>();
         for (Manifest manifest : manifestRepository.findAll()) {
             ManifestRequiredResponseDTO response = new ManifestRequiredResponseDTO();
             response.setManifest(convertToDTO(manifest));
+            response.setLoad(null);
+            response.setVehicle(null);
             responses.add(response);
         }
         return responses;
     }
- 
+
+    // ================= FETCH BY LOAD ID =================
     @Override
     @CircuitBreaker(name = MANIFEST_CB, fallbackMethod = "getByLoadIDFallback")
     public ManifestRequiredResponseDTO getByLoadID(Long loadID) {
+
         Manifest manifest = manifestRepository.findByLoadID(loadID);
         if (manifest == null) {
-            throw new ResourceNotFoundException(
-                    "Manifest not found for loadID: " + loadID);
+            throw new ResourceNotFoundException("Manifest not found for loadID: " + loadID);
         }
         return buildResponse(manifest);
     }
- 
+
     public ManifestRequiredResponseDTO getByLoadIDFallback(Long loadID, Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full manifest response for loadID = " + loadID);
+
         Manifest manifest = manifestRepository.findByLoadID(loadID);
-        if (manifest == null) return null;
+        if (manifest == null) {
+            throw new ResourceNotFoundException("Manifest not found for loadID: " + loadID);
+        }
+
         ManifestRequiredResponseDTO response = new ManifestRequiredResponseDTO();
         response.setManifest(convertToDTO(manifest));
         response.setLoad(null);
         response.setVehicle(null);
         return response;
     }
- 
+
+    // ================= FETCH BY WAREHOUSE ID =================
     @Override
     @CircuitBreaker(name = MANIFEST_CB, fallbackMethod = "getByWarehouseIDFallback")
     public List<ManifestRequiredResponseDTO> getByWarehouseID(Long warehouseID) {
-        List<Manifest> manifests =
-                manifestRepository.findByWarehouseID(warehouseID);
- 
+
+        List<Manifest> manifests = manifestRepository.findByWarehouseID(warehouseID);
+        if (manifests.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No manifests found for warehouseID: " + warehouseID);
+        }
+
         List<ManifestRequiredResponseDTO> responses = new ArrayList<>();
         for (Manifest manifest : manifests) {
             responses.add(buildResponse(manifest));
         }
         return responses;
     }
- 
-    public List<ManifestRequiredResponseDTO> getByWarehouseIDFallback(Long warehouseID, Throwable t) {
-        System.out.println("Fallback executed: unable to fetch full manifest response for warehouseID = " + warehouseID);
+
+    public List<ManifestRequiredResponseDTO> getByWarehouseIDFallback(
+            Long warehouseID, Throwable t) {
+
+        List<Manifest> manifests = manifestRepository.findByWarehouseID(warehouseID);
+        if (manifests.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No manifests found for warehouseID: " + warehouseID);
+        }
+
         List<ManifestRequiredResponseDTO> responses = new ArrayList<>();
-        for (Manifest manifest : manifestRepository.findByWarehouseID(warehouseID)) {
+        for (Manifest manifest : manifests) {
             ManifestRequiredResponseDTO response = new ManifestRequiredResponseDTO();
             response.setManifest(convertToDTO(manifest));
+            response.setLoad(null);
+            response.setVehicle(null);
             responses.add(response);
         }
         return responses;
     }
- 
-    //UPDATE
- 
+
+    // ================= UPDATE =================
     @Override
     public ManifestDTO update(Long manifestID, ManifestDTO manifestDTO) {
+
         Manifest manifest = findManifest(manifestID);
 
         manifest.setWarehouseID(manifestDTO.getWarehouseID());
@@ -142,9 +159,7 @@ public class ManifestServiceImpl implements ManifestService {
         return convertToDTO(manifestRepository.save(manifest));
     }
 
- 
-    //DELETE
- 
+    // ================= DELETE =================
     @Override
     public void delete(Long manifestID) {
         if (!manifestRepository.existsById(manifestID)) {
@@ -153,9 +168,8 @@ public class ManifestServiceImpl implements ManifestService {
         }
         manifestRepository.deleteById(manifestID);
     }
- 
-    //CIRCUIT BREAKER CALLS
- 
+
+    // ================= REMOTE SERVICE CALLS =================
     @CircuitBreaker(name = "loadService", fallbackMethod = "loadFallback")
     private LoadResponseDTO callLoadService(Long loadId) {
         return restTemplate.getForObject(
@@ -163,14 +177,11 @@ public class ManifestServiceImpl implements ManifestService {
                 LoadResponseDTO.class
         );
     }
- 
-    private LoadResponseDTO loadFallback(Long loadId, Exception ex) {
-        System.out.println(
-            "Fallback executed: LOAD service unavailable for loadId = " + loadId
-        );
+
+    private LoadResponseDTO loadFallback(Long loadId, Throwable ex) {
         return null;
     }
- 
+
     @CircuitBreaker(name = "fleetService", fallbackMethod = "fleetFallback")
     private VehicleDTO callFleetService(Long vehicleId) {
         return restTemplate.getForObject(
@@ -178,51 +189,57 @@ public class ManifestServiceImpl implements ManifestService {
                 VehicleDTO.class
         );
     }
- 
-    private VehicleDTO fleetFallback(Long vehicleId, Exception ex) {
-        System.out.println(
-            "Fallback executed: FLEET service unavailable for vehicleId = " + vehicleId
-        );
+
+    private VehicleDTO fleetFallback(Long vehicleId, Throwable ex) {
         return null;
     }
- 
-    
- 
+
+    // ================= RESPONSE BUILDER (DEFENSIVE) =================
     private ManifestRequiredResponseDTO buildResponse(Manifest manifest) {
- 
-        ManifestRequiredResponseDTO response =
-                new ManifestRequiredResponseDTO();
- 
+
+        ManifestRequiredResponseDTO response = new ManifestRequiredResponseDTO();
         response.setManifest(convertToDTO(manifest));
- 
-        LoadResponseDTO loadResponse =
-                callLoadService(manifest.getLoadID());
- 
-        if (loadResponse != null && loadResponse.getLoad() != null) {
- 
+
+        try {
+            LoadResponseDTO loadResponse =
+                    callLoadService(manifest.getLoadID());
+
+            if (loadResponse == null || loadResponse.getLoad() == null) {
+                response.setLoad(null);
+                response.setVehicle(null);
+                return response;
+            }
+
             LoadDTO load = loadResponse.getLoad();
             response.setLoad(load);
- 
+
             if (load.getVehicleID() != null) {
                 VehicleDTO vehicle =
                         callFleetService(load.getVehicleID());
                 response.setVehicle(vehicle);
+            } else {
+                response.setVehicle(null);
             }
+
+        } catch (Exception ex) {
+            response.setLoad(null);
+            response.setVehicle(null);
         }
- 
+
         return response;
     }
- 
-    
- 
+
+    // ================= UTILITIES =================
     private Manifest findManifest(Long id) {
         return manifestRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Manifest not found with ID: " + id));
+                                "Manifest not found with ID: " + id)
+                );
     }
- 
+
     private ManifestDTO convertToDTO(Manifest manifest) {
+
         ManifestDTO dto = new ManifestDTO();
         dto.setManifestID(manifest.getManifestID());
         dto.setLoadID(manifest.getLoadID());
@@ -233,14 +250,15 @@ public class ManifestServiceImpl implements ManifestService {
         dto.setManifestURI(manifest.getManifestURI());
         return dto;
     }
- 
+
     private Manifest convertToEntity(ManifestDTO dto) {
+
         Manifest manifest = new Manifest();
         manifest.setLoadID(dto.getLoadID());
         manifest.setWarehouseID(dto.getWarehouseID());
         manifest.setItemsJSON(dto.getItemsJSON());
         manifest.setCreatedBy(dto.getCreatedBy());
-        manifest.setCreatedAt(dto.getCreatedAt());
+        //manifest.setCreatedAt(dto.getCreatedAt());
         manifest.setManifestURI(dto.getManifestURI());
         return manifest;
     }
