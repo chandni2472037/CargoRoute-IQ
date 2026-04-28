@@ -248,7 +248,7 @@ public class ManifestServiceImpl implements ManifestService {
     }
 
     @Override
-    public ManifestDTO createWithFile(ManifestDTO dto, MultipartFile file) {
+    public ManifestDTO create(ManifestDTO dto, MultipartFile file) {
         String uri = saveFile(file); 
         Manifest manifest = convertToEntity(dto);
         manifest.setManifestURI(uri);
