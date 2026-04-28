@@ -59,9 +59,7 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
         }
     }
     @Override
-    public ProofOfDeliveryDTO createWithImage(
-            ProofOfDeliveryDTO dto,
-            MultipartFile file) {
+    public ProofOfDeliveryDTO create(ProofOfDeliveryDTO dto, MultipartFile file) {
 
         if (dto.getBookingID() == null) {
             throw new BadRequestException("bookingID is mandatory");
