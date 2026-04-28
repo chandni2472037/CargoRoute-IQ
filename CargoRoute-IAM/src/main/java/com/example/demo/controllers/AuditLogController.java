@@ -17,7 +17,7 @@ import com.example.demo.services.AuditLogService;
  * Typically restricted to ADMIN users.
  */
 @RestController
-@RequestMapping("/auditlogs")
+@RequestMapping("/cargoRoute/auditLogs")
 public class AuditLogController {
 
     private final AuditLogService service;
@@ -27,13 +27,13 @@ public class AuditLogController {
     }
 
     /** Create audit log */
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<AuditLogDTO> createLog(@RequestBody AuditLogDTO dto) {
         return new ResponseEntity<>(service.saveAuditLog(dto), HttpStatus.CREATED);
     }
 
     /** Get all audit logs */
-    @GetMapping
+    @GetMapping("/getAllAuditLogs")
     public ResponseEntity<List<AuditLogDTO>> getAllLogs() {
         return ResponseEntity.ok(service.getAllAuditLogs());
     }

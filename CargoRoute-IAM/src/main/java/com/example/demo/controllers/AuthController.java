@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.DTO.AuthRequestDTO;
 import com.example.demo.DTO.AuthResponseDTO;
-import com.example.demo.entities.User;
 import com.example.demo.services.AuthService;
 
 /**
@@ -15,7 +14,7 @@ import com.example.demo.services.AuthService;
  * Handles authentication APIs.
  */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/cargoRoute/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -28,8 +27,13 @@ public class AuthController {
      * User registration API
      */
     @PostMapping("/signup")
-    public ResponseEntity<User> signup(@RequestBody AuthRequestDTO request) {
-        return new ResponseEntity<>(authService.signup(request), HttpStatus.CREATED);
+    public ResponseEntity<String> signup(@RequestBody AuthRequestDTO request) {
+
+        authService.signup(request);  // ✅ delegate to service
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body("Your account has been created successfully");
     }
 
     /**
@@ -37,6 +41,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request) {
+
         return ResponseEntity.ok(authService.login(request));
     }
 }

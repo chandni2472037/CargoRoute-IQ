@@ -12,7 +12,7 @@ public class UserDTO {
 
     private Long userID;
     private String name;
-    private UserRole role;
+    private String role;
     private String email;
     private String phone;
     private String status;
@@ -22,7 +22,7 @@ public class UserDTO {
     public UserDTO() {}
 
     /** Parameterized constructor */
-    public UserDTO(Long userID, String name, UserRole role,
+    public UserDTO(Long userID, String name, String role,
                     String email, String phone, String status, String password) {
         this.userID = userID;
         this.name = name;
@@ -41,8 +41,8 @@ public class UserDTO {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public UserRole getRole() { return role; }
-    public void setRole(UserRole role) { this.role = role; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

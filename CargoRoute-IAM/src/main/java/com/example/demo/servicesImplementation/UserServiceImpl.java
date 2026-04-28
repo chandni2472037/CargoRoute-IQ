@@ -8,9 +8,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.DTO.UserDTO;
+import com.example.demo.DTO.UserUpdateDTO;
 import com.example.demo.entities.User;
+import com.example.demo.enums.UserRole;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.UserService;
+import com.example.demo.exceptions.InvalidCredentialsException;
 import com.example.demo.exceptions.ResourceNotFoundException;
 
 @Service
@@ -25,14 +28,20 @@ public class UserServiceImpl implements UserService {
     // SAVE / UPDATE USER
     @Override
     public UserDTO saveUser(UserDTO userDTO) {
+    	
+    	if (userRepository.findByEmail(userDTO.getEmail()) != null) {
+            throw new InvalidCredentialsException(
+                    "Email already exists. Please use a different email."
+            );
+        }
 
         User user = new User();
         user.setUserID(userDTO.getUserID());
         user.setName(userDTO.getName());
-        user.setRole(userDTO.getRole());
+        user.setRole(UserRole.from(userDTO.getRole()));
         user.setEmail(userDTO.getEmail());
         user.setPhone(userDTO.getPhone());
-        user.setStatus(userDTO.getStatus());
+        user.setStatus(userDTO.getStatus() != null ? userDTO.getStatus() : "Active");
 
         // Encrypt password before saving
         user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
@@ -72,12 +81,34 @@ public class UserServiceImpl implements UserService {
         UserDTO dto = new UserDTO();
         dto.setUserID(user.getUserID());
         dto.setName(user.getName());
-        dto.setRole(user.getRole());
+
+        // ✅ Convert enum → string
+        dto.setRole(user.getRole().name());
+
         dto.setEmail(user.getEmail());
         dto.setPhone(user.getPhone());
         dto.setStatus(user.getStatus());
-        dto.setPassword(user.getPassword());
 
         return dto;
     }
+    
+    
+    @Override
+    public UserDTO updateUser(Long userId, UserUpdateDTO dto) {
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("User not found: " + userId));
+
+        if (dto.getRole() != null) {
+            user.setRole(UserRole.from(dto.getRole()));
+        }
+
+        if (dto.getStatus() != null) {
+            user.setStatus(dto.getStatus());
+        }
+
+        return mapToDTO(userRepository.save(user));
+    }
+
 }

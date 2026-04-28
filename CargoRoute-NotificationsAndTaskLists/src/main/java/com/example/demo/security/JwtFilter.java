@@ -29,8 +29,12 @@ public class JwtFilter extends OncePerRequestFilter{
 	
 	        JwtUtil util = new JwtUtil();
 	
+	        
 	        String username = util.extractUsername(token);
 	        String role = util.extractRole(token);
+	        Long userId = util.extractUserId(token); // ✅ NEW
+
+	        request.setAttribute("userId", userId); // ✅ STORE
 	
 	        //Create AUTH object
 	        UsernamePasswordAuthenticationToken authentication =

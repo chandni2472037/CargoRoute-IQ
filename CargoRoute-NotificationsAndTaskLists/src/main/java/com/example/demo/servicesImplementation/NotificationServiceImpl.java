@@ -61,6 +61,15 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Notification not found: " + id)));
     }
+    
+    @Override
+    public List<NotificationDTO> getByUserId(Long userId) {
+        return repo.findByUserIDOrderByCreatedAtDesc(userId)
+                   .stream()
+                   .map(this::mapToDTO)
+                   .toList();
+    }
+    
 
     @Override
     public List<NotificationDTO> getAll() {

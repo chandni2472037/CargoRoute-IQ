@@ -14,6 +14,13 @@ import java.util.Collections;
 @Component	
 public class JwtFilter extends OncePerRequestFilter{
  
+
+    private final JwtUtil jwtUtil;
+
+    public JwtFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
+
  
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -27,10 +34,14 @@ public class JwtFilter extends OncePerRequestFilter{
 	    	System.out.println("Im jwtfilter, checking auth");
 	        String token = auth.substring(7);
 	
-	        JwtUtil util = new JwtUtil();
+
 	
-	        String username = util.extractUsername(token);
-	        String role = util.extractRole(token);
+	        
+	        String username = jwtUtil.extractUsername(token);
+	        String role = jwtUtil.extractRole(token);
+	        Long userId = jwtUtil.extractUserId(token); 
+
+	        request.setAttribute("userId", userId); 
 	
 	        //Create AUTH object
 	        UsernamePasswordAuthenticationToken authentication =

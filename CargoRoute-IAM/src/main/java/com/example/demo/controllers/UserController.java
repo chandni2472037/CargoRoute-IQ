@@ -5,14 +5,16 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.DTO.UserDTO;
+import com.example.demo.DTO.UserUpdateDTO;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.UserService;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/cargoRoute/user")
 public class UserController {
 
     @Autowired
@@ -28,7 +30,7 @@ public class UserController {
     }
 
     // GET ALL USERS (ADMIN)
-    @GetMapping
+    @GetMapping("/getAllUsers")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
 
         List<UserDTO> users = userService.getAllUsers();
@@ -43,5 +45,14 @@ public class UserController {
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
     
+    
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('Admin')")
+    public ResponseEntity<UserDTO> updateUser(
+            @PathVariable Long id,
+            @RequestBody UserUpdateDTO dto) {
+
+        return ResponseEntity.ok(userService.updateUser(id, dto));
+    }
 
 }
