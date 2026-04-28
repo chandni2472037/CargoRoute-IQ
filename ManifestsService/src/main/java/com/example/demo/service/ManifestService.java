@@ -7,7 +7,7 @@ import com.example.demo.dto.ManifestRequiredResponseDTO;
 
 public interface ManifestService {
 	
-	public ManifestDTO createWithFile(ManifestDTO manifestDTO, MultipartFile file);
+	public ManifestDTO create(ManifestDTO manifestDTO, MultipartFile file);
 	public String saveFile(MultipartFile file);
     public ManifestRequiredResponseDTO getById(Long manifestID);
     public List<ManifestRequiredResponseDTO> getAll();
