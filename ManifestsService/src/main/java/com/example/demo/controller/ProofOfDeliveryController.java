@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.dto.ProofOfDeliveryDTO;
 import com.example.demo.dto.ProofOfDeliveryResponseDTO;
@@ -20,16 +21,21 @@ public class ProofOfDeliveryController {
     @Autowired
     private ProofOfDeliveryService service;
 
-    // CREATE
-    @PostMapping("/createProofOfDelivery")
-    public ResponseEntity<Map<String, String>> create(
-            @RequestBody ProofOfDeliveryDTO dto) {
 
-        service.create(dto);
-        return new ResponseEntity<>(
-        		Map.of("message", "Proof of Delivery created successfully."),HttpStatus.CREATED);
-    }
+    @PostMapping(value = "/createProofOfDeliveryWithImage", consumes = "multipart/form-data")
+    	public ResponseEntity<?> createWithImage(
+    	        @RequestPart("pod") ProofOfDeliveryDTO dto,
+    	        @RequestPart("file") MultipartFile file) {
 
+    	    ProofOfDeliveryDTO saved = service.createWithImage(dto, file);
+
+    	    return ResponseEntity.status(HttpStatus.CREATED).body(
+    	        Map.of(
+    	            "message", "Proof Of Delivery created successfully",
+    	            "podID", saved.getPodID(),
+    	            "podURI", saved.getPodURI()));
+    	}
+    
     // GET BY POD ID
     @GetMapping("/getById/{podId}")
     public ResponseEntity<ProofOfDeliveryResponseDTO> getById(
