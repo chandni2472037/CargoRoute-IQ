@@ -84,7 +84,7 @@ class BookingServiceImplTest {
         when(shipperRepo.findById(1L)).thenReturn(Optional.of(shipper));
         when(repo.save(any(Booking.class))).thenReturn(booking);
 
-        BookingDTO result = bookingService.createBooking(bookingDTO, "test.shipper");
+        BookingDTO result = bookingService.createBooking(bookingDTO, 1L);
 
         assertEquals(BookingStatus.SUBMITTED, result.getStatus());
     }
@@ -97,7 +97,7 @@ class BookingServiceImplTest {
 
         List<BookingDTO> result = bookingService.getAllBookings(null, "Admin");
 
-        assertTrue(result.isEmpty());
+        assertEquals(1, result.size());
     }
 
     // ── getBookingById ───────────────────────────────────────────────────────

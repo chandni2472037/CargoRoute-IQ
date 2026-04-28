@@ -3,13 +3,15 @@ package com.example.demo.serviceimpl;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.example.demo.dto.BookingDetailsDTO;
 import com.example.demo.dto.ExceptionRecordDTO;
@@ -19,6 +21,7 @@ import com.example.demo.entity.enums.ExceptionStatus;
 import com.example.demo.exception.BadRequestException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ExceptionRepository;
+import com.example.demo.security.JwtUtil;
 import com.example.demo.service.ExceptionService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -29,6 +32,7 @@ import org.springframework.security.core.Authentication;
 public class ExceptionServiceImpl implements ExceptionService {
 
     private static final String EXCEPTION_SERVICE_CB = "bookingService";
+    private static final Logger logger = LoggerFactory.getLogger(ExceptionServiceImpl.class);
 
     @Autowired
     private ExceptionRepository repo;
@@ -36,34 +40,11 @@ public class ExceptionServiceImpl implements ExceptionService {
     @Autowired
     private RestTemplate restTemplate;
 
-    /**
-     * Resolve the authenticated user's numeric userId by calling IAM's
-     * internal lookup endpoint (permit-all). Falls back gracefully.
-     */
-    private Long resolveUserId(String email) {
-        try {
-            // IAM InternalUserController: GET /internal/users/byEmail?email={email}
-            // Uses query param (not path var) so the '@' in emails is handled safely.
-            // This endpoint is under /internal/** which is permitAll() in IAM SecurityConfig.
-            com.example.demo.dto.InternalUserDTO user = restTemplate.getForObject(
-                    "http://IDENTITY-ACCESS-MANAGEMENT/internal/users/byEmail?email={email}",
-                    com.example.demo.dto.InternalUserDTO.class,
-                    email
-            );
-            if (user == null || user.getUserID() == null) {
-                throw new BadRequestException("Could not resolve userId for user: " + email);
-            }
-            return user.getUserID();
-        } catch (BadRequestException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new BadRequestException("Could not contact IAM to resolve userId: " + ex.getMessage());
-        }
-    }
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Override
-    @PreAuthorize("hasAnyRole('ADMIN', 'SHIPPER', 'DISPATCHER')")
-    public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
+        public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
         try {
             if (dto == null) {
                 throw new BadRequestException("Exception request body must not be null");
@@ -75,17 +56,19 @@ public class ExceptionServiceImpl implements ExceptionService {
                 throw new BadRequestException("Exception type is required. Valid values are: DELAY, DAMAGE, MISSING");
             }
             if (dto.getStatus() == null) {
-                dto.setStatus(com.example.demo.entity.enums.ExceptionStatus.PENDING);
+                dto.setStatus(ExceptionStatus.PENDING);
             }
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
-                throw new org.springframework.security.access.AccessDeniedException("No authentication context found");
+                throw new AccessDeniedException("No authentication context found");
             }
-            String email = authentication.getName(); // JWT sub = email
-
-            // Resolve numeric userId from IAM — stored as reportedBy, never from frontend
-            Long userId = resolveUserId(email);
+            // Extract userId directly from the JWT claim — no IAM round-trip needed
+            String token = (authentication.getCredentials() instanceof String t) ? t : null;
+            Long userId = (token != null) ? jwtUtil.extractUserId(token) : null;
+            if (userId == null) {
+                throw new AccessDeniedException("Could not resolve userId from token");
+            }
 
             // Verify the booking exists in the Booking Service before saving
             try {
@@ -115,7 +98,7 @@ public class ExceptionServiceImpl implements ExceptionService {
             exception.setReportedBy(userId); // always from auth context, never from frontend
             ExceptionRecord saved = repo.save(exception);
             return entityToDto(saved);
-        } catch (org.springframework.security.access.AccessDeniedException ex) {
+        } catch (AccessDeniedException ex) {
             throw ex;
         } catch (BadRequestException ex) {
             throw ex;
@@ -133,21 +116,19 @@ public class ExceptionServiceImpl implements ExceptionService {
                 .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .orElse(null) : null;
 
-        if ("Admin".equals(role)) {
+        if (role != null && ("ADMIN".equalsIgnoreCase(role) || "DISPATCHER".equalsIgnoreCase(role) || "FLEETMANAGER".equalsIgnoreCase(role)
+            || "WAREHOUSEMANAGER".equalsIgnoreCase(role) || "WAREHOUSE_MANAGER".equalsIgnoreCase(role)
+            || "BILLINGCLERK".equalsIgnoreCase(role) || "BILLING_CLERK".equalsIgnoreCase(role)
+            || "ANALYST".equalsIgnoreCase(role))) {
             return repo.findAll()
                     .stream()
                     .map(e -> getExceptionById(e.getExceptionID()))
                     .collect(Collectors.toList());
         } else {
-            // Resolve current user's numeric ID to filter their own exceptions
-            String email = authentication != null ? authentication.getName() : null;
-            if (email == null) return List.of();
-            Long userId;
-            try {
-                userId = resolveUserId(email);
-            } catch (Exception e) {
-                return List.of();
-            }
+            // Extract userId directly from the JWT claim
+            String token = (authentication != null && authentication.getCredentials() instanceof String t) ? t : null;
+            Long userId = (token != null) ? jwtUtil.extractUserId(token) : null;
+            if (userId == null) return List.of();
             return repo.findByReportedBy(userId)
                     .stream()
                     .map(e -> getExceptionById(e.getExceptionID()))
@@ -176,16 +157,14 @@ public class ExceptionServiceImpl implements ExceptionService {
         response.setExceptiondto(entityToDto(exception));
 
         if (exception.getBookingId() != null) {
+            BookingDetailsDTO bookingDto = null;
+            String url = "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/{id}";
             try {
-                BookingDetailsDTO bookingDto = restTemplate.getForObject(
-                        "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/{id}",
-                        BookingDetailsDTO.class,
-                        exception.getBookingId()
-                );
-                response.setBookingdto(bookingDto);
+                bookingDto = restTemplate.getForObject(url, BookingDetailsDTO.class, exception.getBookingId());
             } catch (Exception e) {
-                response.setBookingdto(null);
+                bookingDto = null;
             }
+            response.setBookingdto(bookingDto);
         }
 
         return response;

@@ -36,20 +36,7 @@ public String extractRole(String token){
         .get("role", String.class);
 }
 
-    /**
-     * Extracts the shipperId claim from the JWT.
-     * Returns null for non-Shipper roles (claim absent in token).
-     */
-    public Long extractShipperId(String token) {
-        Object val = Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody()
-                .get("shipperId");
-        if (val == null) return null;
-        if (val instanceof Long) return (Long) val;
-        return Long.valueOf(val.toString());
-    }
+  
 
     /**
      * Extracts the userId claim from the JWT.

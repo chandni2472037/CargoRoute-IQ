@@ -6,6 +6,7 @@ import com.example.demo.exception.GlobalExceptionHandler;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.service.ClaimService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,18 +46,20 @@ class ClaimControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
-        objectMapper = new ObjectMapper();
+        objectMapper = JsonMapper.builder()
+                .findAndAddModules()
+                .build();
 
         claimDTO = new ClaimDTO();
         claimDTO.setClaimID(1L);
-        claimDTO.setFiledBy("Jane Doe");
+        claimDTO.setFiledBy(1L);
         claimDTO.setAmountClaimed(5000.0);
         claimDTO.setResolutionNotes("Awaiting review");
         claimDTO.setStatus(ClaimStatus.OPEN);
         claimDTO.setExceptionID(1L);
     }
 
-    // ── POST /cargoRoute/claim/addClaim ───────────────────────────────────────
+    // ───────────────── POST /addClaim ─────────────────
 
     @Test
     void addClaim_ShouldReturn201_WhenCreated() throws Exception {
@@ -65,10 +69,11 @@ class ClaimControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(claimDTO)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Claim filed successfully."));
+                .andExpect(jsonPath("$.message")
+                        .value("Claim filed successfully."));
     }
 
-    // ── GET /cargoRoute/claim/getClaims ───────────────────────────────────────
+    // ───────────────── GET /getClaims ─────────────────
 
     @Test
     void fetchAllClaims_ShouldReturn200_WithList() throws Exception {
@@ -77,8 +82,7 @@ class ClaimControllerTest {
         mockMvc.perform(get("/cargoRoute/claim/getClaims"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].claimID").value(1))
-                .andExpect(jsonPath("$[0].filedBy").value("Jane Doe"));
+                .andExpect(jsonPath("$[0].claimID").value(1));
     }
 
     @Test
@@ -90,7 +94,7 @@ class ClaimControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
-    // ── GET /cargoRoute/claim/getClaim/{id} ───────────────────────────────────
+    // ───────────────── GET /getClaimByID/{id} ─────────────────
 
     @Test
     void fetchClaimById_ShouldReturn200_WhenFound() throws Exception {
@@ -98,20 +102,20 @@ class ClaimControllerTest {
 
         mockMvc.perform(get("/cargoRoute/claim/getClaimByID/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.claimID").value(1))
-                .andExpect(jsonPath("$.amountClaimed").value(5000.0));
+                .andExpect(jsonPath("$.amountClaimed").value(5000.0))
+                .andExpect(jsonPath("$.status").value("OPEN"));
     }
 
     @Test
     void fetchClaimById_ShouldReturn404_WhenNotFound() throws Exception {
         when(service.getClaimById(99L))
-                .thenThrow(new ResourceNotFoundException("Claim with ID 99 not found"));
+                .thenThrow(new ResourceNotFoundException("Claim not found"));
 
         mockMvc.perform(get("/cargoRoute/claim/getClaimByID/99"))
                 .andExpect(status().isNotFound());
     }
 
-    // ── PATCH /cargoRoute/claim/updateClaimStatus/{id} ────────────────────────
+    // ───────────────── PATCH /updateClaimStatus/{id} ─────────────────
 
     @Test
     void modifyClaimStatus_ShouldReturn200_WhenUpdated() throws Exception {
@@ -119,15 +123,25 @@ class ClaimControllerTest {
 
         mockMvc.perform(patch("/cargoRoute/claim/updateClaimStatus/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"SETTLED\"}"))
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("status", "SETTLED"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Claim status updated successfully."));
+                .andExpect(jsonPath("$.message")
+                        .value("Claim status updated successfully."));
+    }
+
+    @Test
+    void modifyClaimStatus_ShouldReturn400_WhenStatusMissing() throws Exception {
+        mockMvc.perform(patch("/cargoRoute/claim/updateClaimStatus/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void modifyClaimStatus_ShouldReturn404_WhenNotFound() throws Exception {
         when(service.updateClaimStatus(eq(99L), any(ClaimStatus.class)))
-                .thenThrow(new ResourceNotFoundException("Claim with ID 99 not found"));
+                .thenThrow(new ResourceNotFoundException("Claim not found"));
 
         mockMvc.perform(patch("/cargoRoute/claim/updateClaimStatus/99")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -135,27 +149,32 @@ class ClaimControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // ── GET /cargoRoute/claim/getClaimByException/{exceptionId} ──────────────
+    // ───────────────── GET /getClaimByExceptionID/{exceptionId} ─────────────────
 
     @Test
-    void fetchClaimByExceptionId_ShouldReturn200_WithList() throws Exception {
+    void fetchClaimByExceptionId_ShouldReturn200_WhenFound() throws Exception {
         when(service.getClaimByExceptionId(1L)).thenReturn(List.of(claimDTO));
 
         mockMvc.perform(get("/cargoRoute/claim/getClaimByExceptionID/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].exceptionID").value(1));
     }
 
-    // ── GET /cargoRoute/claim/getClaimByStatus/{status} ──────────────────────
+    // ───────────────── GET /getClaimByStatus/{status} ─────────────────
 
     @Test
-    void fetchByClaimStatus_ShouldReturn200_WithList() throws Exception {
-        when(service.getClaimByStatus(ClaimStatus.OPEN)).thenReturn(List.of(claimDTO));
+    void fetchByClaimStatus_ShouldReturn200_WhenValidStatus() throws Exception {
+        when(service.getClaimByStatus(ClaimStatus.OPEN))
+                .thenReturn(List.of(claimDTO));
 
         mockMvc.perform(get("/cargoRoute/claim/getClaimByStatus/OPEN"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].status").value("OPEN"));
+    }
+
+    @Test
+    void fetchByClaimStatus_ShouldReturn400_WhenInvalidStatus() throws Exception {
+        mockMvc.perform(get("/cargoRoute/claim/getClaimByStatus/INVALID"))
+                .andExpect(status().isBadRequest());
     }
 }

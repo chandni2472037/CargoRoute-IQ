@@ -52,7 +52,7 @@ class ExceptionControllerTest {
         recordDTO = new ExceptionRecordDTO();
         recordDTO.setExceptionID(1L);
         recordDTO.setType(ExceptionType.DELAY);
-        recordDTO.setReportedBy("John");
+        recordDTO.setReportedBy(1L);
         recordDTO.setDescription("Cargo delayed at port");
         recordDTO.setStatus(ExceptionStatus.PENDING);
         recordDTO.setBookingId(1L);
@@ -72,7 +72,8 @@ class ExceptionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(recordDTO)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Exception reported successfully."));
+                .andExpect(jsonPath("$.exceptionID").value(1))
+                .andExpect(jsonPath("$.type").value("DELAY"));
     }
 
     // ── GET /cargoRoute/exception/getExceptions ──────────────────────────────
@@ -106,7 +107,7 @@ class ExceptionControllerTest {
         mockMvc.perform(get("/cargoRoute/exception/getExceptionByID/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.exceptiondto.exceptionID").value(1))
-                .andExpect(jsonPath("$.exceptiondto.reportedBy").value("John"));
+                .andExpect(jsonPath("$.exceptiondto.reportedBy").value(1));
     }
 
     @Test

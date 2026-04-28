@@ -38,6 +38,7 @@ public class ExceptionController {
 
     @GetMapping("/getExceptions")
     // Retrieve exceptions; SHIPPER sees only their own records
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
     public ResponseEntity<List<RequiredResponseDTO>> fetchAllExceptions() {
         List<RequiredResponseDTO> all = service.getAllExceptions();
         return ResponseEntity.ok(all);
@@ -54,8 +55,8 @@ public class ExceptionController {
     }
 
     @PatchMapping("/updateExceptionStatus/{id}")
-    // Partially update the exception: only the status field — only operational roles
-    @PreAuthorize("hasRole('ADMIN')")
+    // Partially update the exception: only the status field — allow operational roles (Dispatcher, Driver, WarehouseManager) and Admin
+    @PreAuthorize("hasAnyRole('DISPATCHER','ADMIN')")
     public ResponseEntity<Map<String, String>> modifyExceptionStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         if (id == null || id <= 0) {
             throw new BadRequestException("Exception ID must be a positive number.");

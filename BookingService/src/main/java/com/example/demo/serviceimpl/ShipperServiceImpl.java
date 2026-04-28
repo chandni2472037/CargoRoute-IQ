@@ -1,6 +1,8 @@
 package com.example.demo.serviceimpl;
 
 import java.util.List;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.ResourceNotFoundException;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +22,7 @@ public class ShipperServiceImpl implements ShipperService  {
 
     public ShipperDTO createShipper(ShipperDTO s){
         if (s == null || s.getName() == null || s.getName().trim().isEmpty()) {
-            throw new com.example.demo.exception.BadRequestException("Shipper name is required");
+            throw new BadRequestException("Shipper name is required");
         }
         Shipper shipper = convertToEntity(s);
         Shipper saved = repo.save(shipper);
@@ -32,7 +34,7 @@ public class ShipperServiceImpl implements ShipperService  {
     }
 
     public ShipperDTO getShipperById(Long id) {
-        Shipper shipper = repo.findById(id).orElseThrow(() -> new com.example.demo.exception.ResourceNotFoundException("Shipper with ID " + id + " not found"));
+        Shipper shipper = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Shipper with ID " + id + " not found"));
         return convertToDTO(shipper);
     }
 

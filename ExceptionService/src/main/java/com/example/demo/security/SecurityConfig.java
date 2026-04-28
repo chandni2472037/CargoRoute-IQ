@@ -42,11 +42,13 @@ public class SecurityConfig {
                 .requestMatchers("/auditlogs/**").hasRole("ADMIN")
 
                 .requestMatchers("/cargoRoute/exception/addException").hasAnyRole("SHIPPER", "DISPATCHER")
-                .requestMatchers("/cargoRoute/exception/getExceptions").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN")
-                .requestMatchers("/cargoRoute/claim/addClaim").hasAnyRole("SHIPPER", "DISPATCHER")
-                .requestMatchers("/cargoRoute/claim/getClaims").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN")
+                .requestMatchers("/cargoRoute/exception/getExceptions").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/cargoRoute/exception/export").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers("/cargoRoute/claim/addClaim").hasAnyRole("SHIPPER", "ADMIN")
+                .requestMatchers("/cargoRoute/claim/getClaims").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/cargoRoute/claim/export").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
                 .requestMatchers("/cargoRoute/claim/updateClaimStatus/**").hasRole("ADMIN")
-                .requestMatchers("/cargoRoute/exception/updateExceptionStatus/**").hasRole("ADMIN")
+                .requestMatchers("/cargoRoute/exception/updateExceptionStatus/**").hasAnyRole("DISPATCHER", "DRIVER", "ADMIN")
 
                 // Everything else
                 .anyRequest().authenticated()

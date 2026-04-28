@@ -2,7 +2,8 @@ package com.example.demo.security;
  
 import io.jsonwebtoken.*;
 import java.util.Date;
- 
+
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
  
 @Component
@@ -36,20 +37,6 @@ public String extractRole(String token){
         .get("role", String.class);
 }
 
-    /**
-     * Extracts the shipperId claim from the JWT.
-     * Returns null for non-Shipper roles (claim absent in token).
-     */
-    public Long extractShipperId(String token) {
-        Object val = Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody()
-                .get("shipperId");
-        if (val == null) return null;
-        if (val instanceof Long) return (Long) val;
-        return Long.valueOf(val.toString());
-    }
 
     /**
      * Extracts the userId claim from the JWT.
@@ -64,5 +51,16 @@ public String extractRole(String token){
         if (val == null) return null;
         if (val instanceof Long) return (Long) val;
         return Long.valueOf(val.toString());
+    }
+
+    /**
+     * Returns the first authority after stripping the "ROLE_" prefix.
+     */
+    public String extractRole(Authentication authentication) {
+        if (authentication == null) return null;
+        return authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse(null);
     }
 }

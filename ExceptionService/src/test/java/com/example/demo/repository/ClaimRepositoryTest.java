@@ -54,7 +54,7 @@ class ClaimRepositoryTest {
         parentException.setType(ExceptionType.DELAY);
         parentException.setStatus(ExceptionStatus.PENDING);
         parentException.setBookingId(100L);
-        parentException.setReportedBy("setup-user");
+        parentException.setReportedBy(1L);
         parentException.setDescription("Base exception for claim tests");
         entityManager.persist(parentException);
         entityManager.flush();
@@ -64,7 +64,7 @@ class ClaimRepositoryTest {
     // Helper
     // -------------------------------------------------------------------------
 
-    private Claim buildClaim(ExceptionRecord exceptionRecord, ClaimStatus status, String filedBy, Double amount) {
+    private Claim buildClaim(ExceptionRecord exceptionRecord, ClaimStatus status, Long filedBy, Double amount) {
         Claim claim = new Claim();
         claim.setExceptionRecord(exceptionRecord);
         claim.setStatus(status);
@@ -79,7 +79,7 @@ class ClaimRepositoryTest {
         record.setType(type);
         record.setStatus(status);
         record.setBookingId(bookingId);
-        record.setReportedBy("helper-user");
+        record.setReportedBy(2L);
         record.setDescription("Extra exception: " + type.name());
         return entityManager.persist(record);
     }
@@ -91,14 +91,14 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("Save a claim — persists and auto-generates ID")
     void testSaveClaim() {
-        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, "claimant1", 1500.00);
+        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, 1L, 1500.00);
 
         Claim saved = claimRepository.save(claim);
 
         assertThat(saved).isNotNull();
         assertThat(saved.getClaimID()).isNotNull().isPositive();
         assertThat(saved.getStatus()).isEqualTo(ClaimStatus.OPEN);
-        assertThat(saved.getFiledBy()).isEqualTo("claimant1");
+        assertThat(saved.getFiledBy()).isEqualTo(1L);
         assertThat(saved.getAmountClaimed()).isEqualTo(1500.00);
         assertThat(saved.getExceptionRecord()).isNotNull();
         assertThat(saved.getExceptionRecord().getExceptionID()).isEqualTo(parentException.getExceptionID());
@@ -107,7 +107,7 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("Find claim by ID — returns the correct claim")
     void testFindById_Found() {
-        Claim claim = buildClaim(parentException, ClaimStatus.UNDER_REVIEW, "claimant2", 2500.00);
+        Claim claim = buildClaim(parentException, ClaimStatus.UNDER_REVIEW, 2L, 2500.00);
         entityManager.persist(claim);
         entityManager.flush();
 
@@ -116,7 +116,7 @@ class ClaimRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getClaimID()).isEqualTo(claim.getClaimID());
         assertThat(found.get().getStatus()).isEqualTo(ClaimStatus.UNDER_REVIEW);
-        assertThat(found.get().getFiledBy()).isEqualTo("claimant2");
+        assertThat(found.get().getFiledBy()).isEqualTo(2L);
     }
 
     @Test
@@ -138,9 +138,9 @@ class ClaimRepositoryTest {
         ExceptionRecord ex3 = persistNewException(ExceptionType.MISSING, ExceptionStatus.RESOLVED, 300L);
         entityManager.flush();
 
-        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN,         "c1", 100.0));
-        entityManager.persist(buildClaim(ex2,             ClaimStatus.SETTLED,       "c2", 200.0));
-        entityManager.persist(buildClaim(ex3,             ClaimStatus.UNDER_REVIEW,  "c3", 300.0));
+        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN,         1L, 100.0));
+        entityManager.persist(buildClaim(ex2,             ClaimStatus.SETTLED,       2L, 200.0));
+        entityManager.persist(buildClaim(ex3,             ClaimStatus.UNDER_REVIEW,  3L, 300.0));
         entityManager.flush();
 
         List<Claim> all = claimRepository.findAll();
@@ -161,7 +161,7 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("findByExceptionRecord_ExceptionID — returns claims for the given exception")
     void testFindByExceptionRecordID_Found() {
-        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, "c1", 750.0);
+        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, 1L, 750.0);
         entityManager.persist(claim);
         entityManager.flush();
 
@@ -169,7 +169,7 @@ class ClaimRepositoryTest {
 
         assertThat(found).hasSize(1);
         assertThat(found.get(0).getClaimID()).isEqualTo(claim.getClaimID());
-        assertThat(found.get(0).getFiledBy()).isEqualTo("c1");
+        assertThat(found.get(0).getFiledBy()).isEqualTo(1L);
     }
 
     @Test
@@ -189,9 +189,9 @@ class ClaimRepositoryTest {
         ExceptionRecord ex3 = persistNewException(ExceptionType.MISSING, ExceptionStatus.RESOLVED, 300L);
         entityManager.flush();
 
-        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN, "c1", 100.0));
-        entityManager.persist(buildClaim(ex2,             ClaimStatus.OPEN, "c2", 200.0));
-        entityManager.persist(buildClaim(ex3,             ClaimStatus.SETTLED, "c3", 300.0));
+        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN, 1L, 100.0));
+        entityManager.persist(buildClaim(ex2,             ClaimStatus.OPEN, 2L, 200.0));
+        entityManager.persist(buildClaim(ex3,             ClaimStatus.SETTLED, 3L, 300.0));
         entityManager.flush();
 
         List<Claim> open    = claimRepository.findByStatus(ClaimStatus.OPEN);
@@ -200,13 +200,13 @@ class ClaimRepositoryTest {
         assertThat(open).hasSize(2);
         assertThat(open).allMatch(c -> c.getStatus() == ClaimStatus.OPEN);
         assertThat(settled).hasSize(1);
-        assertThat(settled.get(0).getFiledBy()).isEqualTo("c3");
+        assertThat(settled.get(0).getFiledBy()).isEqualTo(3L);
     }
 
     @Test
     @DisplayName("findByStatus — returns empty list when no claims match")
     void testFindByStatus_NoResults() {
-        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN, "c1", 100.0));
+        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN, 1L, 100.0));
         entityManager.flush();
 
         assertThat(claimRepository.findByStatus(ClaimStatus.DENIED)).isEmpty();
@@ -221,11 +221,11 @@ class ClaimRepositoryTest {
         ExceptionRecord ex5 = persistNewException(ExceptionType.DAMAGE,  ExceptionStatus.PENDING,   204L);
         entityManager.flush();
 
-        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN,         "c1", 100.0));
-        entityManager.persist(buildClaim(ex2,             ClaimStatus.UNDER_REVIEW,  "c2", 200.0));
-        entityManager.persist(buildClaim(ex3,             ClaimStatus.SETTLED,       "c3", 300.0));
-        entityManager.persist(buildClaim(ex4,             ClaimStatus.DENIED,        "c4", 400.0));
-        entityManager.persist(buildClaim(ex5,             ClaimStatus.CANCELLED,     "c5", 500.0));
+        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN,         1L, 100.0));
+        entityManager.persist(buildClaim(ex2,             ClaimStatus.UNDER_REVIEW,  2L, 200.0));
+        entityManager.persist(buildClaim(ex3,             ClaimStatus.SETTLED,       3L, 300.0));
+        entityManager.persist(buildClaim(ex4,             ClaimStatus.DENIED,        4L, 400.0));
+        entityManager.persist(buildClaim(ex5,             ClaimStatus.CANCELLED,     5L, 500.0));
         entityManager.flush();
 
         assertThat(claimRepository.findByStatus(ClaimStatus.OPEN)).hasSize(1);
@@ -242,7 +242,7 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("Update claim — persists changed status and resolution notes")
     void testUpdateClaim() {
-        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, "c1", 1000.0);
+        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, 1L, 1000.0);
         entityManager.persist(claim);
         entityManager.flush();
 
@@ -265,7 +265,7 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("Delete claim by ID — claim no longer exists")
     void testDeleteById() {
-        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, "c1", 500.0);
+        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, 1L, 500.0);
         entityManager.persist(claim);
         entityManager.flush();
 
@@ -279,7 +279,7 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("Delete claim entity — claim no longer exists")
     void testDeleteEntity() {
-        Claim claim = buildClaim(parentException, ClaimStatus.CANCELLED, "c2", 600.0);
+        Claim claim = buildClaim(parentException, ClaimStatus.CANCELLED, 2L, 600.0);
         entityManager.persist(claim);
         entityManager.flush();
 
@@ -302,8 +302,8 @@ class ClaimRepositoryTest {
         ExceptionRecord ex2 = persistNewException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 200L);
         entityManager.flush();
 
-        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN,     "c1", 100.0));
-        entityManager.persist(buildClaim(ex2,             ClaimStatus.SETTLED,   "c2", 200.0));
+        entityManager.persist(buildClaim(parentException, ClaimStatus.OPEN,     1L, 100.0));
+        entityManager.persist(buildClaim(ex2,             ClaimStatus.SETTLED,   2L, 200.0));
         entityManager.flush();
 
         assertThat(claimRepository.count()).isEqualTo(2);
@@ -312,7 +312,7 @@ class ClaimRepositoryTest {
     @Test
     @DisplayName("ExistsById — true for existing ID, false for unknown ID")
     void testExistsById() {
-        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, "c1", 100.0);
+        Claim claim = buildClaim(parentException, ClaimStatus.OPEN, 1L, 100.0);
         entityManager.persist(claim);
         entityManager.flush();
 

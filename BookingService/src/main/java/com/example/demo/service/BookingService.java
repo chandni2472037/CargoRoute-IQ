@@ -12,23 +12,20 @@ import com.example.demo.entity.enums.BookingStatus;
 public interface BookingService {
 
     /**
-     * Persist a new booking. The backend always derives the owner from
-     * {@code createdByUserId} (IAM numeric user ID) — any value in
-     * {@code b.createdByUserId} sent from the frontend is ignored.
-     *
-     * @param b               booking payload from the request body
-     * @param createdByUserId numeric IAM userId extracted from the JWT
+     * Persist a new booking. createdByUserId is resolved internally from
+     * the SecurityContext — never trusted from the request body.
      */
-    public BookingDTO createBooking(BookingDTO b, Long createdByUserId);
+    public BookingDTO createBooking(BookingDTO b);
 
     /**
      * Retrieve bookings with role-based visibility:
      * <ul>
-     *   <li>Admin  → all bookings</li>
-     *   <li>Others → only bookings created by {@code userId}</li>
+     *   <li>Admin / Dispatcher / read-only roles → all bookings</li>
+     *   <li>Shipper → only bookings created by the caller</li>
      * </ul>
+     * Role and userId are resolved internally from the SecurityContext.
      */
-    public List<BookingDTO> getAllBookings(Long userId, String role);
+    public List<BookingDTO> getAllBookings();
 
     // Retrieve a single booking by its ID
     public BookingDTO getBookingById(Long id);

@@ -40,7 +40,7 @@ class ExceptionRepositoryTest {
     // Helper
     // -------------------------------------------------------------------------
 
-    private ExceptionRecord buildException(ExceptionType type, ExceptionStatus status, Long bookingId, String reportedBy) {
+    private ExceptionRecord buildException(ExceptionType type, ExceptionStatus status, Long bookingId, Long reportedBy) {
         ExceptionRecord record = new ExceptionRecord();
         record.setType(type);
         record.setStatus(status);
@@ -57,7 +57,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("Save an exception record — persists and auto-generates ID")
     void testSaveException() {
-        ExceptionRecord record = buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 101L, "dispatcher1");
+        ExceptionRecord record = buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 101L, 1L);
 
         ExceptionRecord saved = exceptionRepository.save(record);
 
@@ -66,13 +66,13 @@ class ExceptionRepositoryTest {
         assertThat(saved.getType()).isEqualTo(ExceptionType.DELAY);
         assertThat(saved.getStatus()).isEqualTo(ExceptionStatus.PENDING);
         assertThat(saved.getBookingId()).isEqualTo(101L);
-        assertThat(saved.getReportedBy()).isEqualTo("dispatcher1");
+        assertThat(saved.getReportedBy()).isEqualTo(1L);
     }
 
     @Test
     @DisplayName("Find exception by ID — returns the correct record")
     void testFindById_Found() {
-        ExceptionRecord record = buildException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 202L, "agent2");
+        ExceptionRecord record = buildException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 202L, 2L);
         entityManager.persist(record);
         entityManager.flush();
 
@@ -99,9 +99,9 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("Find all exception records — returns all persisted records")
     void testFindAll() {
-        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, "user1"));
-        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.IN_REVIEW, 2L, "user2"));
-        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.RESOLVED,  3L, "user3"));
+        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, 1L));
+        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.IN_REVIEW, 2L, 2L));
+        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.RESOLVED,  3L, 3L));
         entityManager.flush();
 
         List<ExceptionRecord> all = exceptionRepository.findAll();
@@ -122,9 +122,9 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByBookingId — returns only records for the given booking ID")
     void testFindByBookingId_MultipleResults() {
-        entityManager.persist(buildException(ExceptionType.DELAY,  ExceptionStatus.PENDING,   100L, "u1"));
-        entityManager.persist(buildException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 100L, "u2"));
-        entityManager.persist(buildException(ExceptionType.MISSING,ExceptionStatus.RESOLVED,  200L, "u3"));
+        entityManager.persist(buildException(ExceptionType.DELAY,  ExceptionStatus.PENDING,   100L, 1L));
+        entityManager.persist(buildException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 100L, 2L));
+        entityManager.persist(buildException(ExceptionType.MISSING,ExceptionStatus.RESOLVED,  200L, 3L));
         entityManager.flush();
 
         List<ExceptionRecord> booking100 = exceptionRepository.findByBookingId(100L);
@@ -139,7 +139,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByBookingId — returns empty list for unknown booking ID")
     void testFindByBookingId_NotFound() {
-        entityManager.persist(buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 100L, "u1"));
+        entityManager.persist(buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 100L, 1L));
         entityManager.flush();
 
         assertThat(exceptionRepository.findByBookingId(9999L)).isEmpty();
@@ -152,9 +152,9 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByStatus — returns only records with the given status")
     void testFindByStatus_MultipleResults() {
-        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, "u1"));
-        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.PENDING,   2L, "u2"));
-        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.IN_REVIEW, 3L, "u3"));
+        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, 1L));
+        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.PENDING,   2L, 2L));
+        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.IN_REVIEW, 3L, 3L));
         entityManager.flush();
 
         List<ExceptionRecord> pending   = exceptionRepository.findByStatus(ExceptionStatus.PENDING);
@@ -169,7 +169,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByStatus — returns empty list when no records match")
     void testFindByStatus_NoResults() {
-        entityManager.persist(buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 1L, "u1"));
+        entityManager.persist(buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 1L, 1L));
         entityManager.flush();
 
         assertThat(exceptionRepository.findByStatus(ExceptionStatus.RESOLVED)).isEmpty();
@@ -178,10 +178,10 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByStatus — correctly returns each distinct status")
     void testFindByStatus_AllStatuses() {
-        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, "u1"));
-        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.IN_REVIEW, 2L, "u2"));
-        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.RESOLVED,  3L, "u3"));
-        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.REJECTED,  4L, "u4"));
+        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, 1L));
+        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.IN_REVIEW, 2L, 2L));
+        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.RESOLVED,  3L, 3L));
+        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.REJECTED,  4L, 4L));
         entityManager.flush();
 
         assertThat(exceptionRepository.findByStatus(ExceptionStatus.PENDING)).hasSize(1);
@@ -197,10 +197,10 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByType — returns only records with the given exception type")
     void testFindByType_MultipleResults() {
-        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, "u1"));
-        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.IN_REVIEW, 2L, "u2"));
-        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.RESOLVED,  3L, "u3"));
-        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.REJECTED,  4L, "u4"));
+        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.PENDING,   1L, 1L));
+        entityManager.persist(buildException(ExceptionType.DELAY,   ExceptionStatus.IN_REVIEW, 2L, 2L));
+        entityManager.persist(buildException(ExceptionType.DAMAGE,  ExceptionStatus.RESOLVED,  3L, 3L));
+        entityManager.persist(buildException(ExceptionType.MISSING, ExceptionStatus.REJECTED,  4L, 4L));
         entityManager.flush();
 
         List<ExceptionRecord> delays  = exceptionRepository.findByType(ExceptionType.DELAY);
@@ -216,7 +216,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("findByType — returns empty list when no records match the type")
     void testFindByType_NoResults() {
-        entityManager.persist(buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 1L, "u1"));
+        entityManager.persist(buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 1L, 1L));
         entityManager.flush();
 
         assertThat(exceptionRepository.findByType(ExceptionType.MISSING)).isEmpty();
@@ -229,7 +229,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("Update exception record — persists changed status and description")
     void testUpdateException() {
-        ExceptionRecord record = buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 100L, "admin");
+        ExceptionRecord record = buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 100L, 5L);
         entityManager.persist(record);
         entityManager.flush();
 
@@ -252,7 +252,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("Delete exception record by ID — record no longer exists")
     void testDeleteById() {
-        ExceptionRecord record = buildException(ExceptionType.DAMAGE, ExceptionStatus.PENDING, 10L, "u1");
+        ExceptionRecord record = buildException(ExceptionType.DAMAGE, ExceptionStatus.PENDING, 10L, 1L);
         entityManager.persist(record);
         entityManager.flush();
 
@@ -266,7 +266,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("Delete exception record entity — record no longer exists")
     void testDeleteEntity() {
-        ExceptionRecord record = buildException(ExceptionType.MISSING, ExceptionStatus.REJECTED, 20L, "u2");
+        ExceptionRecord record = buildException(ExceptionType.MISSING, ExceptionStatus.REJECTED, 20L, 2L);
         entityManager.persist(record);
         entityManager.flush();
 
@@ -286,8 +286,8 @@ class ExceptionRepositoryTest {
     void testCount() {
         assertThat(exceptionRepository.count()).isZero();
 
-        entityManager.persist(buildException(ExceptionType.DELAY,  ExceptionStatus.PENDING,   1L, "u1"));
-        entityManager.persist(buildException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 2L, "u2"));
+        entityManager.persist(buildException(ExceptionType.DELAY,  ExceptionStatus.PENDING,   1L, 1L));
+        entityManager.persist(buildException(ExceptionType.DAMAGE, ExceptionStatus.IN_REVIEW, 2L, 2L));
         entityManager.flush();
 
         assertThat(exceptionRepository.count()).isEqualTo(2);
@@ -296,7 +296,7 @@ class ExceptionRepositoryTest {
     @Test
     @DisplayName("ExistsById — true for existing ID, false for unknown ID")
     void testExistsById() {
-        ExceptionRecord record = buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 1L, "u1");
+        ExceptionRecord record = buildException(ExceptionType.DELAY, ExceptionStatus.PENDING, 1L, 1L);
         entityManager.persist(record);
         entityManager.flush();
 

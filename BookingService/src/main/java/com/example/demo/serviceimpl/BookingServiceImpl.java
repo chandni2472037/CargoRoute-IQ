@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.example.demo.security.JwtUtil;
+import com.example.demo.exception.ResourceNotFoundException;
 
 @Service // Marks this class as a Spring-managed service component
 public class BookingServiceImpl implements BookingService {
@@ -34,8 +36,14 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private ShipperRepository shipperRepo;
 
-    // Save a new booking — createdByUserId is always set from the authenticated caller, never from the request body
-    public BookingDTO createBooking(BookingDTO b, Long createdByUserId) {
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    // Save a new booking — createdByUserId is resolved from the SecurityContext, never from the request body
+    public BookingDTO createBooking(BookingDTO b) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = (authentication != null && authentication.getCredentials() instanceof String t) ? t : null;
+        Long createdByUserId = (token != null) ? jwtUtil.extractUserId(token) : null;
         if (b == null) {
             throw new BadRequestException("Booking request body must not be null");
         }
@@ -81,27 +89,34 @@ public class BookingServiceImpl implements BookingService {
         if (b.getStatus() == null) {
             b.setStatus(BookingStatus.SUBMITTED);
         }
-        // Always override with server-derived owner — ignore whatever frontend may have sent
         b.setCreatedByUserId(createdByUserId);
         Booking booking = convertToEntity(b);
         Booking saved = repo.save(booking);
         return convertToDTO(saved);
     }
 
-    // Fetch bookings: Admins see all; Shippers (and any other non-Admin role) see only their own
-    public List<BookingDTO> getAllBookings(Long userId, String role) {
-        if ("ADMIN".equalsIgnoreCase(role)) {
+    // Fetch bookings: read-only/operational roles see all; Customer sees only their own
+    public List<BookingDTO> getAllBookings() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String role = jwtUtil.extractRole(authentication);
+
+        if ("ADMIN".equalsIgnoreCase(role) || "DISPATCHER".equalsIgnoreCase(role) || "FLEETMANAGER".equalsIgnoreCase(role)
+                || "WAREHOUSEMANAGER".equalsIgnoreCase(role) || "WAREHOUSE_MANAGER".equalsIgnoreCase(role)
+                || "BILLINGCLERK".equalsIgnoreCase(role) || "BILLING_CLERK".equalsIgnoreCase(role)
+                || "ANALYST".equalsIgnoreCase(role)) {
             return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
         }
-        // Shipper and other roles: filter by creator userId
+        // Customer and other roles: filter by creator userId
+        String credToken = (authentication.getCredentials() instanceof String t) ? t : null;
+        Long userId = (credToken != null) ? jwtUtil.extractUserId(credToken) : null;
         if (userId == null) return List.of();
         return repo.findByCreatedByUserId(userId)
-                   .stream().map(this::convertToDTO).collect(Collectors.toList());
+                .stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     // Fetch a single booking by ID
     public BookingDTO getBookingById(Long id) {
-        Booking booking = repo.findById(id).orElseThrow(() -> new com.example.demo.exception.ResourceNotFoundException("Booking with ID " + id + " not found"));
+        Booking booking = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking with ID " + id + " not found"));
         return convertToDTO(booking);
     }
 
@@ -109,7 +124,7 @@ public class BookingServiceImpl implements BookingService {
 
     // Update only the status of an existing booking
     public BookingDTO updateBookingStatus(Long id, BookingStatus status) {
-        Booking booking = repo.findById(id).orElseThrow(() -> new com.example.demo.exception.ResourceNotFoundException("Booking with ID " + id + " not found"));
+        Booking booking = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking with ID " + id + " not found"));
         booking.setStatus(status);
         Booking updated = repo.save(booking);
         return convertToDTO(updated);
@@ -134,14 +149,7 @@ public class BookingServiceImpl implements BookingService {
         List<BookingDTO> imported = new ArrayList<>();
         List<String> errors = new ArrayList<>();
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Long userId = null;
-        if (auth != null && auth.getCredentials() instanceof String token) {
-            userId = new com.example.demo.security.JwtUtil().extractUserId(token);
-        }
-        if (userId == null) {
-            throw new org.springframework.security.access.AccessDeniedException("No authentication context found");
-        }
+        // userId is resolved inside createBooking via SecurityContextHolder — no need to pass it here
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
@@ -181,7 +189,7 @@ public class BookingServiceImpl implements BookingService {
                     dto.setStatus(BookingStatus.SUBMITTED);
 
                     // CSV import: assign owner to authenticated user
-                    imported.add(createBooking(dto, userId));
+                    imported.add(createBooking(dto));
 
                 } catch (Exception e) {
                     errors.add("Row " + rowNum + ": " + e.getMessage());
@@ -246,7 +254,7 @@ public class BookingServiceImpl implements BookingService {
             throw new com.example.demo.exception.BadRequestException("Shipper ID is required");
         }
         return shipperRepo.findById(dto.getShipperID())
-                .orElseThrow(() -> new com.example.demo.exception.ResourceNotFoundException("Shipper with ID " + dto.getShipperID() + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Shipper with ID " + dto.getShipperID() + " not found"));
     }
 
     private ShipperDTO convertShipperToDTO(Shipper shipper) {

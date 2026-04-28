@@ -1,6 +1,8 @@
 package com.example.demo.serviceimpl;
 
 import java.util.List;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.entity.enums.ClaimStatus;
 
 import java.util.stream.Collectors;
 
@@ -11,7 +13,6 @@ import com.example.demo.dto.ClaimDTO;
 import com.example.demo.dto.RequiredResponseDTO;
 import com.example.demo.entity.Claim;
 import com.example.demo.entity.ExceptionRecord;
-import com.example.demo.entity.enums.ClaimStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ClaimRepository;
 import com.example.demo.repository.ExceptionRepository;
@@ -39,16 +40,16 @@ public class ClaimServiceImpl implements ClaimService {
     // Save a new Claim or update an existing one
     public ClaimDTO createClaim(ClaimDTO dto){
         if (dto == null) {
-            throw new com.example.demo.exception.BadRequestException("Claim request body must not be null");
+            throw new BadRequestException("Claim request body must not be null");
         }
         if (dto.getExceptionID() == null) {
-            throw new com.example.demo.exception.BadRequestException("Exception ID is required");
+            throw new BadRequestException("Exception ID is required");
         }
         if (dto.getAmountClaimed() == null || dto.getAmountClaimed() <= 0) {
-            throw new com.example.demo.exception.BadRequestException("Amount claimed must be a positive number");
+            throw new BadRequestException("Amount claimed must be a positive number");
         }
         if (dto.getStatus() == null) {
-            dto.setStatus(com.example.demo.entity.enums.ClaimStatus.OPEN);
+            dto.setStatus(ClaimStatus.OPEN);
         }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String token = (String) authentication.getCredentials();
@@ -68,7 +69,9 @@ public class ClaimServiceImpl implements ClaimService {
         Long userId = jwtUtil.extractUserId(token);
         String role = jwtUtil.extractRole(token);
 
-        if ("Admin".equalsIgnoreCase(role)) {
+        if ("Admin".equalsIgnoreCase(role) || "Dispatcher".equalsIgnoreCase(role) || "FleetManager".equalsIgnoreCase(role) || "WarehouseManager".equalsIgnoreCase(role)
+            || "Warehouse_Manager".equalsIgnoreCase(role) || "BillingClerk".equalsIgnoreCase(role) || "BILLINGCLERK".equalsIgnoreCase(role) || "BILLING_CLERK".equalsIgnoreCase(role)
+            || "Analyst".equalsIgnoreCase(role)) {
             return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
         } else {
             return repo.findByFiledBy(userId).stream().map(this::convertToDTO).collect(Collectors.toList());

@@ -28,8 +28,8 @@ public class ClaimController {
     private ClaimService service;
 
     @PostMapping("/addClaim")
-    // Create a new Claim record — allow Shipper and operational roles (Admin must not create)
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER')")
+    // Create a new Claim record — only Shipper (and Admin if supported) may file claims
+    @PreAuthorize("hasAnyRole('SHIPPER','ADMIN')")
     public ResponseEntity<Map<String, String>> addClaim(@RequestBody ClaimDTO c) {
         service.createClaim(c);
         return new ResponseEntity<>(Map.of("message", "Claim filed successfully."), HttpStatus.CREATED);
@@ -37,6 +37,7 @@ public class ClaimController {
 
     @GetMapping("/getClaims")
     // Retrieve all Claim records; SHIPPER sees only their own claims
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
     public ResponseEntity<List<ClaimDTO>> fetchAllClaims() {
         List<ClaimDTO> all = service.getAllClaims();
         return ResponseEntity.ok(all);
@@ -44,6 +45,7 @@ public class ClaimController {
 
     @GetMapping("/getClaimByID/{id}")
     // Retrieve a specific Claim by ID
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK')")
     public ResponseEntity<ClaimDTO> fetchClaimById(@PathVariable Long id) {
         ClaimDTO dto = service.getClaimById(id);
         return ResponseEntity.ok(dto);
@@ -64,12 +66,14 @@ public class ClaimController {
 
     @GetMapping("/getClaimByExceptionID/{exceptionId}")
     // Retrieve all claims for a specific exception
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK')")
     public ResponseEntity<List<ClaimDTO>> fetchClaimByExceptionId(@PathVariable Long exceptionId) {
         return ResponseEntity.ok(service.getClaimByExceptionId(exceptionId));
     }
 
     @GetMapping("/getClaimByStatus/{status}")
     // Retrieve all claims by status
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK')")
     public ResponseEntity<List<ClaimDTO>> fetchByClaimStatus(@PathVariable ClaimStatus status) {
         return ResponseEntity.ok(service.getClaimByStatus(status));
     }
