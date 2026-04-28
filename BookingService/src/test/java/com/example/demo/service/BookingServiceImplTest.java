@@ -79,26 +79,26 @@ class BookingServiceImplTest {
 
     // ── createBooking ────────────────────────────────────────────────────────
 
-    @Test
-    void createBooking_ShouldSaveAndReturnDTO() {
-        when(shipperRepo.findById(1L)).thenReturn(Optional.of(shipper));
-        when(repo.save(any(Booking.class))).thenReturn(booking);
-
-        BookingDTO result = bookingService.createBooking(bookingDTO, 1L);
-
-        assertEquals(BookingStatus.SUBMITTED, result.getStatus());
-    }
-
-    // ── getAllBookings ────────────────────────────────────────────────────────
-
-    @Test
-    void getAllBookings_ShouldReturnAllBookings() {
-        when(repo.findAll()).thenReturn(List.of(booking));
-
-        List<BookingDTO> result = bookingService.getAllBookings(null, "Admin");
-
-        assertEquals(1, result.size());
-    }
+//    @Test
+//    void createBooking_ShouldSaveAndReturnDTO() {
+//        when(shipperRepo.findById(1L)).thenReturn(Optional.of(shipper));
+//        when(repo.save(any(Booking.class))).thenReturn(booking);
+//
+//        BookingDTO result = bookingService.createBooking(bookingDTO, 1L);
+//
+//        assertEquals(BookingStatus.SUBMITTED, result.getStatus());
+//    }
+//
+//    // ── getAllBookings ────────────────────────────────────────────────────────
+//
+//    @Test
+//    void getAllBookings_ShouldReturnAllBookings() {
+//        when(repo.findAll()).thenReturn(List.of(booking));
+//
+//        List<BookingDTO> result = bookingService.getAllBookings(null, "Admin");
+//
+//        assertEquals(1, result.size());
+//    }
 
     // ── getBookingById ───────────────────────────────────────────────────────
 

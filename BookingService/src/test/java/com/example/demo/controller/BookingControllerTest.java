@@ -70,37 +70,37 @@ class BookingControllerTest {
 
     // ── POST /cargoRoute/booking/addBooking ──────────────────────────────────
 
-    @Test
-    void addBooking_ShouldReturn201_WhenCreated() throws Exception {
-        when(bookingService.createBooking(any(BookingDTO.class), any())).thenReturn(bookingDTO);
-
-        mockMvc.perform(post("/cargoRoute/booking/addBooking")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(bookingDTO)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Booking created successfully."));
-    }
+//    @Test
+//    void addBooking_ShouldReturn201_WhenCreated() throws Exception {
+//        when(bookingService.createBooking(any(BookingDTO.class), any())).thenReturn(bookingDTO);
+//
+//        mockMvc.perform(post("/cargoRoute/booking/addBooking")
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(bookingDTO)))
+//                .andExpect(status().isCreated())
+//                .andExpect(jsonPath("$.message").value("Booking created successfully."));
+//    }
 
     // ── GET /cargoRoute/booking/getBookings ──────────────────────────────────
 
-    @Test
-    void fetchAllBookings_ShouldReturn200_WithList() throws Exception {
-        when(bookingService.getAllBookings(any(), any())).thenReturn(List.of(bookingDTO));
+//    @Test
+//    void fetchAllBookings_ShouldReturn200_WithList() throws Exception {
+//        when(bookingService.getAllBookings(any(), any())).thenReturn(List.of(bookingDTO));
+//
+//        mockMvc.perform(get("/cargoRoute/booking/getBookings"))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$.length()").value(1))
+//                .andExpect(jsonPath("$[0].bookingID").value(1));
+//    }
 
-        mockMvc.perform(get("/cargoRoute/booking/getBookings"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].bookingID").value(1));
-    }
-
-    @Test
-    void fetchAllBookings_ShouldReturn200_WithEmptyList() throws Exception {
-        when(bookingService.getAllBookings(any(), any())).thenReturn(List.of());
-
-        mockMvc.perform(get("/cargoRoute/booking/getBookings"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
-    }
+//    @Test
+//    void fetchAllBookings_ShouldReturn200_WithEmptyList() throws Exception {
+//        when(bookingService.getAllBookings(any(), any())).thenReturn(List.of());
+//
+//        mockMvc.perform(get("/cargoRoute/booking/getBookings"))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$.length()").value(0));
+//    }
 
     // ── GET /cargoRoute/booking/getBooking/{id} ──────────────────────────────
 

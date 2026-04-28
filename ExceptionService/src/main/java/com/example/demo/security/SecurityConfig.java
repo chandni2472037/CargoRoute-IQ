@@ -34,7 +34,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
 
-                .requestMatchers("/cargoRoute/exceptions/**").permitAll()
+                .requestMatchers("/cargoRoute/exception/**").permitAll()
 
                 // Exception endpoints - require authentication
                 .requestMatchers("/cargoRoute/claims/**").permitAll()

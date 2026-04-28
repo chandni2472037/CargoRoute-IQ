@@ -6,9 +6,9 @@ spring:
     name: REPORT-SERVICE
 
   datasource:
-    url: jdbc:mysql://localhost:3306/Reportdb
+    url: jdbc:mysql://localhost:3306/cargoroute
     username: root
-    password: mamatha123
+    password: root
 
   jpa:
     show-sql: true
