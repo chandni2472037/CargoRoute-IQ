@@ -5,7 +5,12 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.ReportDTO;
 import com.example.demo.entity.Report;
 import com.example.demo.enums.ReportScope;
@@ -13,11 +18,19 @@ import com.example.demo.exception.ReportNotFoundException;
 import com.example.demo.repo.ReportRepo;
 import com.example.demo.service.ReportService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Service
 public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private ReportRepo repo;
+
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
 
     // ================= ENTITY → DTO =================
     private ReportDTO toDTO(Report entity) {
@@ -54,6 +67,22 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public ReportDTO save(ReportDTO report) {
         Report saved = repo.save(toEntity(report));
+
+        Long userId = resolveActorUserId(saved.getGeneratedBy());
+        notificationClient.notifyUser(
+                userId,
+                saved.getReportID(),
+                "KPI report " + saved.getReportID() + " generated and pending review.",
+                "Exception"
+        );
+        // WHY: pending KPI reviews should be actionable via tasks for operations accountability.
+        taskClient.createTask(
+            userId,
+            saved.getReportID(),
+            "Review KPI report " + saved.getReportID() + " and approve findings.",
+            LocalDateTime.now().toLocalDate()
+        );
+
         return toDTO(saved);
     }
 
@@ -99,5 +128,43 @@ public class ReportServiceImpl implements ReportService {
             throw new ReportNotFoundException("Report not found with id: " + id);
         }
         repo.deleteById(id);
+    }
+
+    private Long parseUserId(String userValue) {
+        if (userValue == null || userValue.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userValue.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Long resolveActorUserId(String userValue) {
+        Long parsed = parseUserId(userValue);
+        if (parsed != null) {
+            return parsed;
+        }
+        // WHY: generatedBy may be a username, so use authenticated user id for task/notification ownership.
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletAttributes) {
+            HttpServletRequest request = servletAttributes.getRequest();
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof Long value) {
+                return value;
+            }
+            if (userId instanceof Integer value) {
+                return value.longValue();
+            }
+            if (userId instanceof String value) {
+                try {
+                    return Long.parseLong(value);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 }

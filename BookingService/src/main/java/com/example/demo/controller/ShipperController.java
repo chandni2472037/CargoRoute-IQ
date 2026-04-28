@@ -43,8 +43,7 @@ public class ShipperController {
     @PutMapping("/updateShipper/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> modifyShipper(@PathVariable Long id, @RequestBody ShipperDTO updated) {
-        updated.setShipperID(id);
-        service.createShipper(updated);
+        service.updateShipper(id, updated);
         return ResponseEntity.ok(Map.of("message", "Shipper updated successfully."));
     }
 

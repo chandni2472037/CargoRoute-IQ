@@ -3,6 +3,8 @@ package com.example.demo.entities;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 /**
  * AuditLog Entity
  * ----------------
@@ -35,6 +37,8 @@ public class AuditLog {
     private String details;
 
     // Timestamp of when the action was performed
+
+    @CreationTimestamp
     private LocalDateTime timestamp;
 
     // Default constructor (required by JPA) 

@@ -23,12 +23,11 @@ public class SecurityConfig {
             // JWT based → stateless
             .csrf(csrf -> csrf.disable())
 
-            // Only protect this microservice’s endpoints
+            // Only protect this microservice's endpoints
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/cargoRoute/notifications/**")
-                    .hasAnyRole("Admin", "Dispatcher", "Driver")
-                .requestMatchers("/cargoRoute/tasks/**")
-                    .hasAnyRole("Admin","Dispatcher","FleetManager","WarehouseManager")
+                .requestMatchers("/cargoRoute/internal/**").permitAll()
+                .requestMatchers("/cargoRoute/notifications/**").permitAll()
+                .requestMatchers("/cargoRoute/tasks/**").permitAll()
                 .anyRequest().authenticated()
             )
 

@@ -2,6 +2,7 @@ package com.example.demo.controllers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.stream.IntStream;
@@ -61,7 +62,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void login_propagatesServiceToken() {
+    void login_delegatesToService() {
         AuthService service = org.mockito.Mockito.mock(AuthService.class);
         AuthController controller = new AuthController(service);
 
@@ -72,6 +73,19 @@ class AuthControllerTest {
 
         assertNotNull(response.getBody());
         assertEquals("jwt-123", response.getBody().getToken());
+        verify(service).login(req);
+    }
+
+    @Test
+    void signout_returnsOk() {
+        AuthService service = org.mockito.Mockito.mock(AuthService.class);
+        AuthController controller = new AuthController(service);
+
+        ResponseEntity<String> response = controller.signout();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Signed out successfully", response.getBody());
+        verify(service).signout();
     }
 
     @ParameterizedTest(name = "signup endpoint case {0}")
@@ -102,7 +116,20 @@ class AuthControllerTest {
 
         ResponseEntity<AuthResponseDTO> response = controller.login(req);
 
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("token-" + i, response.getBody().getToken());
+    }
+
+    @ParameterizedTest(name = "signout endpoint case {0}")
+    @MethodSource("signupCases")
+    void signout_parameterizedCases(int i) {
+        AuthService service = org.mockito.Mockito.mock(AuthService.class);
+        AuthController controller = new AuthController(service);
+
+        ResponseEntity<String> response = controller.signout();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Signed out successfully", response.getBody());
     }
 
     private AuthRequestDTO request(String email, String role) {

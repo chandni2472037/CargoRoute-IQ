@@ -16,4 +16,10 @@ public interface NotificationService {
 
     void delete(Long id);
     List<NotificationDTO> getByUserId(Long userId);
+
+    NotificationDTO markAsRead(Long notificationId, Long userId);
+
+    int markAllAsRead(Long userId);
+
+    int deleteAllForUser(Long userId);
 }

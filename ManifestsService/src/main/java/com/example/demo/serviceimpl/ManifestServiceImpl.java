@@ -4,10 +4,17 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.client.RestTemplate;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
+import jakarta.servlet.http.HttpServletRequest;
+
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.LoadDTO;
 import com.example.demo.dto.LoadResponseDTO;
 import com.example.demo.dto.ManifestDTO;
@@ -29,6 +36,12 @@ public class ManifestServiceImpl implements ManifestService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+
     private static final String LOAD_SERVICE_URL =
             "http://ROUTING-SERVICE/cargoRoute/loads/getLoad/";
 
@@ -39,7 +52,22 @@ public class ManifestServiceImpl implements ManifestService {
     @Override
     public ManifestDTO create(ManifestDTO manifestDTO) {
         Manifest manifest = convertToEntity(manifestDTO);
-        return convertToDTO(manifestRepository.save(manifest));
+        Manifest saved = manifestRepository.save(manifest);
+        Long userId = resolveActorUserId(saved.getCreatedBy());
+        notificationClient.notifyUser(
+            userId,
+            saved.getManifestID(),
+            "Pickup task created for manifest " + saved.getManifestID() + ".",
+            "Pickup"
+        );
+        // WHY: warehouse teams need explicit pickup tasks tied to manifest generation.
+        taskClient.createTask(
+            userId,
+            saved.getManifestID(),
+            "Prepare pickup handover for manifest " + saved.getManifestID() + ".",
+            null
+        );
+        return convertToDTO(saved);
     }
 
     // ================= FETCH BY ID =================
@@ -156,7 +184,22 @@ public class ManifestServiceImpl implements ManifestService {
         manifest.setItemsJSON(manifestDTO.getItemsJSON());
         manifest.setManifestURI(manifestDTO.getManifestURI());
 
-        return convertToDTO(manifestRepository.save(manifest));
+        Manifest updated = manifestRepository.save(manifest);
+        Long userId = resolveActorUserId(updated.getCreatedBy());
+        notificationClient.notifyUser(
+            userId,
+            updated.getManifestID(),
+            "Delivery task updated for manifest " + updated.getManifestID() + ".",
+            "Delivery"
+        );
+        // WHY: manifest updates impact delivery execution and must create a follow-up task.
+        taskClient.createTask(
+            userId,
+            updated.getManifestID(),
+            "Reconfirm delivery readiness for manifest " + updated.getManifestID() + ".",
+            null
+        );
+        return convertToDTO(updated);
     }
 
     // ================= DELETE =================
@@ -236,6 +279,44 @@ public class ManifestServiceImpl implements ManifestService {
                         new ResourceNotFoundException(
                                 "Manifest not found with ID: " + id)
                 );
+    }
+
+    private Long parseUserId(String createdBy) {
+        if (createdBy == null || createdBy.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(createdBy.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Long resolveActorUserId(String createdBy) {
+        Long parsed = parseUserId(createdBy);
+        if (parsed != null) {
+            return parsed;
+        }
+        // WHY: createdBy can be username text, fallback to authenticated user to keep non-pickup flows deliverable.
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletAttributes) {
+            HttpServletRequest request = servletAttributes.getRequest();
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof Long value) {
+                return value;
+            }
+            if (userId instanceof Integer value) {
+                return value.longValue();
+            }
+            if (userId instanceof String value) {
+                try {
+                    return Long.parseLong(value);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     private ManifestDTO convertToDTO(Manifest manifest) {

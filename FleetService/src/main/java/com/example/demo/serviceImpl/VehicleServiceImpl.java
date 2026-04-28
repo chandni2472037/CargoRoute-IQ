@@ -9,6 +9,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.DriverDTO;
 import com.example.demo.dto.VehicleAvailabilityDTO;
 import com.example.demo.dto.VehicleDTO;
@@ -28,6 +30,12 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
 
     // Mapping methods
     private VehicleDTO entityToDto(Vehicle vehicle) {
@@ -111,14 +119,33 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     public VehicleDTO createVehicle(VehicleDTO vehicleDTO) {
         Vehicle vehicle = dtoToEntity(vehicleDTO);
-        vehicleRepository.save(vehicle);
-        return entityToDto(vehicle);
+        Vehicle saved = vehicleRepository.save(vehicle);
+
+        if (saved.getDriverID() != null) {
+            notificationClient.notifyUser(
+                    saved.getDriverID(),
+                    saved.getVehicleID(),
+                    "Pickup task available for vehicle " + saved.getRegNumber() + ".",
+                    "Pickup"
+            );
+            // WHY: vehicle onboarding should create a concrete pickup task for the assigned driver.
+            taskClient.createTask(
+                saved.getDriverID(),
+                saved.getVehicleID(),
+                "Prepare vehicle " + saved.getRegNumber() + " for pickup operations.",
+                null
+            );
+        }
+
+        return entityToDto(saved);
     }
 
     @Override
     public VehicleDTO updateVehicle(Long id, VehicleDTO vehicleDTO) {
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found with id " + id));
+
+        Long previousDriverId = vehicle.getDriverID();
 
         // ✅ Update basic fields
         vehicle.setRegNumber(vehicleDTO.getRegNumber());
@@ -150,8 +177,25 @@ public class VehicleServiceImpl implements VehicleService {
             });
         }
 
-        vehicleRepository.save(vehicle);
-        return entityToDto(vehicle);
+        Vehicle updated = vehicleRepository.save(vehicle);
+
+        if (updated.getDriverID() != null && !updated.getDriverID().equals(previousDriverId)) {
+            notificationClient.notifyUser(
+                    updated.getDriverID(),
+                    updated.getVehicleID(),
+                    "Vehicle " + updated.getRegNumber() + " has been reassigned to you.",
+                "Delivery"
+            );
+            // WHY: reassignment must transfer task ownership to the newly assigned driver.
+            taskClient.createTask(
+                updated.getDriverID(),
+                updated.getVehicleID(),
+                "Acknowledge reassignment for vehicle " + updated.getRegNumber() + ".",
+                null
+            );
+        }
+
+        return entityToDto(updated);
     }
 
     @Override
@@ -165,6 +209,21 @@ public class VehicleServiceImpl implements VehicleService {
     public void deleteVehicle(Long id) {
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found with id " + id));
+        if (vehicle.getDriverID() != null) {
+            notificationClient.notifyUser(
+                    vehicle.getDriverID(),
+                    vehicle.getVehicleID(),
+                    "Vehicle " + vehicle.getRegNumber() + " is no longer available.",
+                    "Exception"
+            );
+            // WHY: unavailability events need an exception task so replacement actions are tracked.
+            taskClient.createTask(
+                vehicle.getDriverID(),
+                vehicle.getVehicleID(),
+                "Handle unavailability exception for vehicle " + vehicle.getRegNumber() + ".",
+                null
+            );
+        }
         vehicleRepository.delete(vehicle);
     }
 

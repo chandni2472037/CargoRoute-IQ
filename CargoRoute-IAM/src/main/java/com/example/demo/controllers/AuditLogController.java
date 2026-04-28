@@ -5,10 +5,14 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.DTO.AuditLogDTO;
 import com.example.demo.services.AuditLogService;
+
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * AuditLogController
@@ -39,8 +43,27 @@ public class AuditLogController {
     }
 
     /** Get audit log by ID */
-    @GetMapping("/{id}")
-    public ResponseEntity<AuditLogDTO> getLogById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.getAuditLogById(id));
+
+    @GetMapping("/my")
+    public ResponseEntity<List<AuditLogDTO>> getMyAuditLogs(HttpServletRequest request) {
+
+        Long userId = (Long) request.getAttribute("userId");
+
+        return ResponseEntity.ok(
+           service.getAuditLogsByUserId(userId)
+        );
+        
+        
     }
+    
+    @PreAuthorize("hasRole('Admin')")
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<AuditLogDTO>> getAuditLogsForUser(
+            @PathVariable Long userId) {
+
+        return ResponseEntity.ok(
+            service.getAuditLogsByUserId(userId)
+        );
+    }
+
 }

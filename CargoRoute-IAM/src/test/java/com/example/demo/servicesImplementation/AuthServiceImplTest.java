@@ -23,8 +23,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.demo.DTO.AuthRequestDTO;
 import com.example.demo.DTO.AuthResponseDTO;
+import com.example.demo.clients.NotificationClient;
 import com.example.demo.entities.User;
 import com.example.demo.enums.UserRole;
+import com.example.demo.exceptions.DuplicateEmailException;
 import com.example.demo.exceptions.InvalidCredentialsException;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.security.JwtUtil;
@@ -40,6 +42,9 @@ class AuthServiceImplTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private NotificationClient notificationClient;
 
     @InjectMocks
     private AuthServiceImpl service;
@@ -61,6 +66,8 @@ class AuthServiceImplTest {
     void signup_savesUserWhenEmailIsNew() {
         when(repo.findByEmail("john@mail.com")).thenReturn(null);
         when(encoder.encode("raw")).thenReturn("encoded");
+        when(notificationClient.notifyUser(1L, 1L, "Welcome to CargoRoute IQ. Your account has been created.", "Exception"))
+            .thenReturn(true);
         User saved = new User(1L, "John", UserRole.Admin, "john@mail.com", "999", "Active", "encoded");
         when(repo.save(org.mockito.ArgumentMatchers.any(User.class))).thenReturn(saved);
 
@@ -68,13 +75,14 @@ class AuthServiceImplTest {
 
         assertEquals("john@mail.com", result.getEmail());
         assertEquals(UserRole.Admin, result.getRole());
+        verify(notificationClient).notifyUser(1L, 1L, "Welcome to CargoRoute IQ. Your account has been created.", "Exception");
     }
 
     @Test
     void signup_throwsWhenEmailAlreadyExists() {
         when(repo.findByEmail("john@mail.com")).thenReturn(new User());
 
-        InvalidCredentialsException ex = assertThrows(InvalidCredentialsException.class, () -> service.signup(request));
+        DuplicateEmailException ex = assertThrows(DuplicateEmailException.class, () -> service.signup(request));
 
         assertTrue(ex.getMessage().contains("Email already exists"));
     }
@@ -84,7 +92,10 @@ class AuthServiceImplTest {
         request.setStatus(null);
         when(repo.findByEmail("john@mail.com")).thenReturn(null);
         when(encoder.encode("raw")).thenReturn("encoded");
-        when(repo.save(org.mockito.ArgumentMatchers.any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificationClient.notifyUser(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+            .thenReturn(true);
+        when(repo.save(org.mockito.ArgumentMatchers.any(User.class)))
+            .thenReturn(new User(99L, "John", UserRole.Admin, "john@mail.com", "999", "Active", "encoded"));
 
         User result = service.signup(request);
 
@@ -132,7 +143,13 @@ class AuthServiceImplTest {
 
         when(repo.findByEmail(request.getEmail())).thenReturn(null);
         when(encoder.encode("raw")).thenReturn("encoded");
-        when(repo.save(org.mockito.ArgumentMatchers.any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificationClient.notifyUser(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+            .thenReturn(true);
+        when(repo.save(org.mockito.ArgumentMatchers.any(User.class))).thenAnswer(invocation -> {
+            User created = invocation.getArgument(0);
+            created.setUserID(100L);
+            return created;
+        });
 
         User result = service.signup(request);
 
@@ -160,6 +177,26 @@ class AuthServiceImplTest {
 
         assertNotNull(response);
         assertEquals(token, response.getToken());
+    }
+
+    @Test
+    void signout_completesWithoutException() {
+        // signout is stateless (JWT) — just verifies no exception thrown and method is callable
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> service.signout());
+    }
+
+    @Test
+    void login_throwsWhenUserAccountInactive() {
+        User user = new User(1L, "John", UserRole.Admin, "john@mail.com", "999", "INACTIVE", "encoded");
+        when(repo.findByEmail("john@mail.com")).thenReturn(user);
+        when(encoder.matches("raw", "encoded")).thenReturn(true);
+
+        com.example.demo.exceptions.UserAccountDisabledException ex = assertThrows(
+            com.example.demo.exceptions.UserAccountDisabledException.class,
+            () -> service.login(request)
+        );
+
+        assertEquals("User account is not active", ex.getMessage());
     }
 
     private static Stream<Arguments> loginCases() {

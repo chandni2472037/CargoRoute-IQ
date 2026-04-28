@@ -23,29 +23,29 @@ public class JwtFilter extends OncePerRequestFilter{
 	    System.out.println("Im inside jwtfiler");
 	    
 	
-	    if(auth != null && auth.startsWith("Bearer ")){
-	    	System.out.println("Im jwtfilter, checking auth");
-	        String token = auth.substring(7);
-	
-	        JwtUtil util = new JwtUtil();
-	
-	        
-	        String username = util.extractUsername(token);
-	        String role = util.extractRole(token);
-	        Long userId = util.extractUserId(token); // ✅ NEW
+if (auth != null && auth.startsWith("Bearer ")) {
+        System.out.println("Im jwtfilter, checking auth");
+        String token = auth.substring(7);
+        try {
+            JwtUtil util = new JwtUtil();
 
-	        request.setAttribute("userId", userId); // ✅ STORE
-	
-	        //Create AUTH object
-	        UsernamePasswordAuthenticationToken authentication =
-	                new UsernamePasswordAuthenticationToken(
-	                        username,
-	                        null,
-	                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-	                );
-	
-	        //SET into security context
-	        SecurityContextHolder.getContext().setAuthentication(authentication);
+            String username = util.extractUsername(token);
+            String role     = util.extractRole(token);
+            Long userId      = util.extractUserId(token);
+
+            request.setAttribute("userId", userId);
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            username,
+                            null,
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        } catch (Exception e) {
+            System.err.println("[JwtFilter] Token parse failed: " + e.getMessage());
+        }
 	    }
 	    
 	    System.out.println("auth check done");

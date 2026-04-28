@@ -51,14 +51,18 @@ public class AuditLogServiceImpl implements AuditLogService {
     }
 
     @Override
-    public AuditLogDTO getAuditLogById(Long id) {
+    public List<AuditLogDTO> getAuditLogsByUserId(Long userId) {
 
-        AuditLog log = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "AuditLog not found with id: " + id));
+        List<AuditLog> logs =
+            repository.findByUserIDOrderByTimestampDesc(userId);
 
-        return mapToDTO(log);
+        List<AuditLogDTO> dtoList = new ArrayList<>();
+        for (AuditLog log : logs) {
+            dtoList.add(mapToDTO(log));
+        }
+        return dtoList;
     }
+
 
     /** Entity → DTO mapper */
     private AuditLogDTO mapToDTO(AuditLog log) {

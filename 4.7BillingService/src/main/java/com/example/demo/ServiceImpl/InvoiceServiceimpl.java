@@ -1,5 +1,6 @@
 package com.example.demo.ServiceImpl;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -7,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.service.InvoiceService;
 import com.example.demo.dto.InvoiceDTO;
 import com.example.demo.dto.InvoiceRequiredResponseDTO;
@@ -23,6 +26,12 @@ public class InvoiceServiceimpl implements InvoiceService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
 
     // ================= DTO → ENTITY =================
     private Invoice toEntity(InvoiceDTO dto) {
@@ -56,6 +65,19 @@ public class InvoiceServiceimpl implements InvoiceService {
     @Override
     public InvoiceDTO save(InvoiceDTO invoice) {
         Invoice saved = repo.save(toEntity(invoice));
+        notificationClient.notifyUser(
+                saved.getShipperID(),
+                saved.getInvoiceID(),
+                "Invoice " + saved.getInvoiceID() + " generated and pending approval.",
+                "Invoice"
+        );
+        // WHY: billing approvals must be represented as tasks to ensure invoice review completion.
+        taskClient.createTask(
+            saved.getShipperID(),
+            saved.getInvoiceID(),
+            "Review and approve invoice " + saved.getInvoiceID() + ".",
+            saved.getPeriodEnd() != null ? saved.getPeriodEnd() : LocalDate.now()
+        );
         return toDTO(saved);
     }
 
@@ -135,6 +157,19 @@ public class InvoiceServiceimpl implements InvoiceService {
         existing.setStatus(invoiceDTO.getStatus());
 
         Invoice updated = repo.save(existing);
+        notificationClient.notifyUser(
+            updated.getShipperID(),
+            updated.getInvoiceID(),
+            "Invoice " + updated.getInvoiceID() + " updated with status " + updated.getStatus() + ".",
+            "Invoice"
+        );
+        // WHY: invoice updates can affect settlement decisions, so they need explicit task follow-up.
+        taskClient.createTask(
+            updated.getShipperID(),
+            updated.getInvoiceID(),
+            "Reconcile updated invoice " + updated.getInvoiceID() + " with current status.",
+            updated.getPeriodEnd() != null ? updated.getPeriodEnd() : LocalDate.now()
+        );
         return toDTO(updated);
     }
 

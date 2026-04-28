@@ -17,5 +17,5 @@ public interface AuditLogService {
     List<AuditLogDTO> getAllAuditLogs();
 
     /** Retrieves audit log by ID */
-    AuditLogDTO getAuditLogById(Long id);
+    List<AuditLogDTO> getAuditLogsByUserId(Long userId);
 }

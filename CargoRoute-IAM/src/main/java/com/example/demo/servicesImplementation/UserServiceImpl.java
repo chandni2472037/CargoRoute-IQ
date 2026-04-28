@@ -9,7 +9,10 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.DTO.UserDTO;
 import com.example.demo.DTO.UserUpdateDTO;
+import com.example.demo.annotations.AuditableAction;
 import com.example.demo.entities.User;
+import com.example.demo.enums.AuditAction;
+import com.example.demo.enums.AuditResourceType;
 import com.example.demo.enums.UserRole;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.UserService;
@@ -27,6 +30,7 @@ public class UserServiceImpl implements UserService {
 
     // SAVE / UPDATE USER
     @Override
+    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.USER, details = "User registered by admin")
     public UserDTO saveUser(UserDTO userDTO) {
     	
     	if (userRepository.findByEmail(userDTO.getEmail()) != null) {
@@ -94,6 +98,7 @@ public class UserServiceImpl implements UserService {
     
     
     @Override
+    @AuditableAction(action = AuditAction.UPDATE, resourceType = AuditResourceType.USER, details = "User profile updated", resourceIdArgIndex = 0)
     public UserDTO updateUser(Long userId, UserUpdateDTO dto) {
 
         User user = userRepository.findById(userId)
@@ -108,7 +113,9 @@ public class UserServiceImpl implements UserService {
             user.setStatus(dto.getStatus());
         }
 
-        return mapToDTO(userRepository.save(user));
+        User updatedUser = userRepository.save(user);
+
+        return mapToDTO(updatedUser);
     }
 
 }

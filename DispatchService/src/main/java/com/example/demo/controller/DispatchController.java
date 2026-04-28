@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.dto.DispatchDTO;
@@ -21,6 +22,7 @@ public class DispatchController {
 
     //CREATE 
     @PostMapping("/createDispatch")
+    @PreAuthorize("hasAnyRole('Dispatcher', 'Admin')")
     public ResponseEntity<Map<String, String>> createDispatch(@RequestBody DispatchDTO dispatchDTO) {
 
         dispatchService.insert(dispatchDTO);
@@ -30,6 +32,7 @@ public class DispatchController {
     
     //Get dispatch by Load ID
     @GetMapping("/getDispatchByLoadId/{loadId}")
+    @PreAuthorize("hasAnyRole('Dispatcher', 'Driver', 'Admin')")
     public ResponseEntity<DispatchResponseDTO> getDispatchByLoadId(@PathVariable Long loadId) {
 
         return ResponseEntity.ok(dispatchService.findByLoadID(loadId));
@@ -37,6 +40,7 @@ public class DispatchController {
 
     //FETCH
     @GetMapping("/getDispatchById/{dispatchId}")
+    @PreAuthorize("hasAnyRole('Dispatcher', 'Driver', 'Admin')")
     public ResponseEntity<DispatchResponseDTO> getDispatchById(
             @PathVariable Long dispatchId) {
 
@@ -44,6 +48,7 @@ public class DispatchController {
     }
 
     @GetMapping("/getAssigned-by/{assignedBy}")
+    @PreAuthorize("hasAnyRole('Dispatcher', 'Admin')")
     public ResponseEntity<List<DispatchResponseDTO>> getDispatchByAssignedBy(
             @PathVariable String assignedBy) {
 
@@ -51,6 +56,7 @@ public class DispatchController {
     }
 
     @GetMapping("/getDispatchByStatus/{status}")
+    @PreAuthorize("hasAnyRole('Dispatcher', 'Admin')")
     public ResponseEntity<List<DispatchResponseDTO>> getDispatchByStatus(
             @PathVariable DispatchStatus status) {
 
