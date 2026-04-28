@@ -19,12 +19,12 @@ public class ManifestController {
     @Autowired
     private ManifestService manifestService;
 
-    @PostMapping(value = "/createManifestWithFile", consumes = "multipart/form-data")
-    public ResponseEntity<?> createManifestWithFile(
+    @PostMapping(value = "/createManifest", consumes = "multipart/form-data")
+    public ResponseEntity<?> createManifest(
             @RequestPart("manifest") ManifestDTO manifestDTO,
             @RequestPart("file") MultipartFile file) {
 
-        ManifestDTO saved = manifestService.createWithFile(manifestDTO, file);
+        ManifestDTO saved = manifestService.create(manifestDTO, file);
 
         return new ResponseEntity<>(Map.of(
                 "message", "Manifest created successfully.",

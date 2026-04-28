@@ -10,7 +10,7 @@ import com.example.demo.entities.enums.ProofOfDeliveryStatus;
 
 public interface ProofOfDeliveryService {
 
-    ProofOfDeliveryDTO createWithImage(ProofOfDeliveryDTO dto, MultipartFile file);
+    ProofOfDeliveryDTO create(ProofOfDeliveryDTO dto, MultipartFile file);
 
     ProofOfDeliveryResponseDTO getById(Long podID);
 

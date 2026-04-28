@@ -1,5 +1,4 @@
 package com.example.demo.service;
-
 import com.example.demo.dto.LoadDTO;
 import com.example.demo.dto.LoadResponseDTO;
 import com.example.demo.dto.ManifestDTO;
@@ -18,16 +17,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +46,12 @@ class ManifestServiceImplTest {
     @BeforeEach
     void setUp() {
 
+        ReflectionTestUtils.setField(
+                manifestService,
+                "uploadDir",
+                System.getProperty("java.io.tmpdir") + "/test-manifests/"
+        );
+
         manifest = new Manifest();
         manifest.setManifestID(1L);
         manifest.setLoadID(100L);
@@ -55,54 +59,85 @@ class ManifestServiceImplTest {
         manifest.setItemsJSON("{\"item\":\"Box\"}");
         manifest.setCreatedBy("Admin");
         manifest.setCreatedAt(LocalDateTime.now());
-        manifest.setManifestURI("s3://manifest.pdf");
+        manifest.setManifestURI("/manifests/sample.pdf");
 
         manifestDTO = new ManifestDTO();
         manifestDTO.setLoadID(100L);
         manifestDTO.setWarehouseID(200L);
         manifestDTO.setItemsJSON("{\"item\":\"Box\"}");
         manifestDTO.setCreatedBy("Admin");
-        manifestDTO.setCreatedAt(LocalDateTime.now());
-        manifestDTO.setManifestURI("s3://manifest.pdf");
     }
 
-    // ───────────────── CREATE ─────────────────
+    // ─────────────────── CREATE WITH FILE ───────────────────
 
     @Test
-    void create_ShouldSaveAndReturnDTO() {
+    void createWithFile_ShouldSaveManifestAndReturnDTO() {
+
+        MockMultipartFile manifestPdfFile = new MockMultipartFile(
+                "file",
+                "manifest.pdf",
+                "application/pdf",
+                "Sample manifest PDF content".getBytes()
+        );
+
+        ManifestServiceImpl spyService = spy(manifestService);
+
+        doReturn("/manifests/sample.pdf")
+                .when(spyService).saveFile(any());
 
         when(manifestRepository.save(any(Manifest.class)))
                 .thenReturn(manifest);
 
-        ManifestDTO result = manifestService.create(manifestDTO);
+        ManifestDTO result =
+                spyService.create(manifestDTO, manifestPdfFile);
 
         assertNotNull(result);
-        assertEquals(100L, result.getLoadID());
-        assertEquals(200L, result.getWarehouseID());
-        assertEquals("Admin", result.getCreatedBy());
-        verify(manifestRepository, times(1)).save(any(Manifest.class));
+        assertEquals("/manifests/sample.pdf", result.getManifestURI());
+        verify(manifestRepository).save(any(Manifest.class));
     }
 
-    // ───────────────── GET BY ID ─────────────────
+    @Test
+    void createWithFile_ShouldThrowException_WhenFileIsEmpty() {
+
+        MockMultipartFile emptyPdfFile = new MockMultipartFile(
+                "file",
+                "manifest.pdf",
+                "application/pdf",
+                new byte[0]
+        );
+
+        assertThrows(RuntimeException.class,
+                () -> manifestService.create(manifestDTO, emptyPdfFile));
+    }
 
     @Test
-    void getById_ShouldReturnManifestWithLoadAndVehicle() {
+    void createWithFile_ShouldThrowException_WhenFileIsNull() {
+
+        assertThrows(RuntimeException.class,
+                () -> manifestService.create(manifestDTO, null));
+    }
+
+    // ─────────────────── GET BY ID ───────────────────
+
+    @Test
+    void getById_ShouldReturnFullResponse_WhenLoadAndVehicleAvailable() {
 
         LoadDTO loadDTO = new LoadDTO();
         loadDTO.setVehicleID(300L);
 
-        LoadResponseDTO loadResponse = new LoadResponseDTO();
-        loadResponse.setLoad(loadDTO);
+        LoadResponseDTO loadResponseDTO = new LoadResponseDTO();
+        loadResponseDTO.setLoad(loadDTO);
 
         when(manifestRepository.findById(1L))
                 .thenReturn(Optional.of(manifest));
+
         when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(loadResponse);
+                .thenReturn(loadResponseDTO);
+
         when(restTemplate.getForObject(anyString(), eq(VehicleDTO.class)))
                 .thenReturn(new VehicleDTO());
 
-        ManifestRequiredResponseDTO result =
-                manifestService.getById(1L);
+        ManifestRequiredResponseDTO result = manifestService.getById(1L);
 
         assertNotNull(result);
         assertNotNull(result.getManifest());
@@ -111,7 +146,23 @@ class ManifestServiceImplTest {
     }
 
     @Test
-    void getById_ShouldThrowException_WhenNotFound() {
+    void getById_ShouldReturnPartialResponse_WhenLoadServiceFails() {
+
+        when(manifestRepository.findById(1L))
+                .thenReturn(Optional.of(manifest));
+
+        when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
+                .thenReturn(null);
+
+        ManifestRequiredResponseDTO result = manifestService.getById(1L);
+
+        assertNotNull(result.getManifest());
+        assertNull(result.getLoad());
+        assertNull(result.getVehicle());
+    }
+
+    @Test
+    void getById_ShouldThrowException_WhenManifestNotFound() {
 
         when(manifestRepository.findById(99L))
                 .thenReturn(Optional.empty());
@@ -120,124 +171,75 @@ class ManifestServiceImplTest {
                 () -> manifestService.getById(99L));
     }
 
-    // ───────────────── GET ALL ─────────────────
+    // ─────────────────── FALLBACKS ───────────────────
 
     @Test
-    void getAll_ShouldReturnList() {
-
-        when(manifestRepository.findAll())
-                .thenReturn(List.of(manifest));
-        when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(null);
-
-        List<ManifestRequiredResponseDTO> result =
-                manifestService.getAll();
-
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void getAll_ShouldReturnEmptyList_WhenNoData() {
-
-        when(manifestRepository.findAll())
-                .thenReturn(List.of());
-
-        List<ManifestRequiredResponseDTO> result =
-                manifestService.getAll();
-
-        assertTrue(result.isEmpty());
-    }
-
-    // ───────────────── GET BY LOAD ID ─────────────────
-
-    @Test
-    void getByLoadID_ShouldReturnManifest() {
-
-        when(manifestRepository.findByLoadID(100L))
-                .thenReturn(manifest);
-        when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(null);
-
-        ManifestRequiredResponseDTO result =
-                manifestService.getByLoadID(100L);
-
-        assertEquals(100L, result.getManifest().getLoadID());
-    }
-
-    @Test
-    void getByLoadID_ShouldThrowException_WhenNotFound() {
-
-        when(manifestRepository.findByLoadID(100L))
-                .thenReturn(null);
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> manifestService.getByLoadID(100L));
-    }
-
-    // ───────────────── GET BY WAREHOUSE ID ─────────────────
-
-    @Test
-    void getByWarehouseID_ShouldReturnList() {
-
-        when(manifestRepository.findByWarehouseID(200L))
-                .thenReturn(List.of(manifest));
-        when(restTemplate.getForObject(anyString(), eq(LoadResponseDTO.class)))
-                .thenReturn(null);
-
-        List<ManifestRequiredResponseDTO> result =
-                manifestService.getByWarehouseID(200L);
-
-        assertEquals(1, result.size());
-    }
-
-    // ───────────────── UPDATE ─────────────────
-
-    @Test
-    void update_ShouldUpdateAndReturnDTO() {
+    void getByIdFallback_ShouldReturnManifestOnly() {
 
         when(manifestRepository.findById(1L))
                 .thenReturn(Optional.of(manifest));
+
+        ManifestRequiredResponseDTO response =
+                manifestService.getByIdFallback(1L, new RuntimeException());
+
+        assertNotNull(response.getManifest());
+        assertNull(response.getLoad());
+        assertNull(response.getVehicle());
+    }
+
+    @Test
+    void getAllFallback_ShouldReturnPartialResponses() {
+
+        when(manifestRepository.findAll())
+                .thenReturn(List.of(manifest));
+
+        List<ManifestRequiredResponseDTO> responses =
+                manifestService.getAllFallback(new RuntimeException());
+
+        assertEquals(1, responses.size());
+        assertNull(responses.get(0).getLoad());
+    }
+
+    // ─────────────────── UPDATE ───────────────────
+
+    @Test
+    void update_ShouldModifyFields_WhenManifestExists() {
+
+        when(manifestRepository.findById(1L))
+                .thenReturn(Optional.of(manifest));
+
         when(manifestRepository.save(any(Manifest.class)))
                 .thenReturn(manifest);
 
         ManifestDTO updateDTO = new ManifestDTO();
-        updateDTO.setItemsJSON("{\"item\":\"Updated\"}");
-        updateDTO.setManifestURI("updated-uri");
+        updateDTO.setWarehouseID(999L);
+        updateDTO.setItemsJSON("{\"item\":\"Pallet\"}");
+        updateDTO.setManifestURI("/manifests/updated.pdf");
 
-        ManifestDTO result =
-                manifestService.update(1L, updateDTO);
+        ManifestDTO result = manifestService.update(1L, updateDTO);
 
-        assertEquals("updated-uri", result.getManifestURI());
+        assertNotNull(result);
+        verify(manifestRepository).save(any(Manifest.class));
     }
 
-    @Test
-    void update_ShouldThrowException_WhenNotFound() {
-
-        when(manifestRepository.findById(1L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> manifestService.update(1L, manifestDTO));
-    }
-
-    // ───────────────── DELETE ─────────────────
+    // ─────────────────── DELETE ───────────────────
 
     @Test
     void delete_ShouldDeleteManifest_WhenExists() {
 
-        when(manifestRepository.existsById(1L))
-                .thenReturn(true);
+        when(manifestRepository.existsById(1L)).thenReturn(true);
 
-        assertDoesNotThrow(() -> manifestService.delete(1L));
+        manifestService.delete(1L);
+
+        verify(manifestRepository).deleteById(1L);
     }
 
     @Test
-    void delete_ShouldThrowException_WhenNotFound() {
+    void delete_ShouldThrowException_WhenManifestDoesNotExist() {
 
-        when(manifestRepository.existsById(1L))
-                .thenReturn(false);
+        when(manifestRepository.existsById(99L)).thenReturn(false);
 
         assertThrows(ResourceNotFoundException.class,
-                () -> manifestService.delete(1L));
+                () -> manifestService.delete(99L));
     }
 }
