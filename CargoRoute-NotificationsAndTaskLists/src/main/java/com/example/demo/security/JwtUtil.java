@@ -38,11 +38,17 @@ public String extractRole(String token){
 }
 
 public Long extractUserId(String token) {
-    return Jwts.parser()
+    Object raw = Jwts.parser()
         .setSigningKey(secret)
         .parseClaimsJws(token)
         .getBody()
-        .get("userId", Long.class);
+        .get("userId");
+    if (raw == null)        return null;
+    if (raw instanceof Long)    return (Long) raw;
+    if (raw instanceof Integer) return ((Integer) raw).longValue();
+    // IAM may store it as String
+    try { return Long.parseLong(raw.toString()); }
+    catch (NumberFormatException e) { return null; }
 }
 
 }

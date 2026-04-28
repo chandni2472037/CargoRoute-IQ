@@ -5,8 +5,13 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.LoadDTO;
 import com.example.demo.dto.RequiredResponseDTO;
 import com.example.demo.dto.VehicleDTO;
@@ -28,6 +33,12 @@ public class LoadServiceImpl implements LoadService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+
     @Override
     public List<RequiredResponseDTO> getAllLoads() {
         return loadRepository.findAll()
@@ -40,6 +51,21 @@ public class LoadServiceImpl implements LoadService {
     public LoadDTO createLoad(LoadDTO loadDTO) {
         Load load = dtoToEntity(loadDTO);
         Load saved = loadRepository.save(load);
+
+        notificationClient.notifyUser(
+                getCurrentUserId(),
+                saved.getLoadID(),
+                "Load " + saved.getLoadCode() + " planned and pending dispatch approval.",
+                "Pickup"
+        );
+        // WHY: create an actionable item so pending dispatch approvals are tracked and not only notified.
+        taskClient.createTask(
+            getCurrentUserId(),
+            saved.getLoadID(),
+            "Review and approve load " + saved.getLoadCode() + " for pickup planning.",
+            saved.getPlannedStart() != null ? saved.getPlannedStart().toLocalDate() : null
+        );
+
         return entityToDto(saved);
     }
 
@@ -58,6 +84,18 @@ public class LoadServiceImpl implements LoadService {
         load.setStatus(loadDTO.getStatus());
 
         Load updated = loadRepository.save(load);
+
+        String category = "Delivery";
+        String message = "Load " + updated.getLoadCode() + " updated with status " + updated.getStatus() + ".";
+        notificationClient.notifyUser(getCurrentUserId(), updated.getLoadID(), message, category);
+        // WHY: when load details/status change, dispatch must explicitly re-check execution readiness.
+        taskClient.createTask(
+            getCurrentUserId(),
+            updated.getLoadID(),
+            "Re-validate delivery execution for load " + updated.getLoadCode() + ".",
+            updated.getPlannedEnd() != null ? updated.getPlannedEnd().toLocalDate() : null
+        );
+
         return entityToDto(updated);
     }
 
@@ -127,5 +165,26 @@ public class LoadServiceImpl implements LoadService {
         load.setBookingsJSON(dto.getBookingsJSON());
         load.setStatus(dto.getStatus());
         return load;
+    }
+
+    private Long getCurrentUserId() {
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletAttributes) {
+            Object userIdObj = servletAttributes.getRequest().getAttribute("userId");
+            if (userIdObj instanceof Long userId) {
+                return userId;
+            }
+            if (userIdObj instanceof Integer userId) {
+                return userId.longValue();
+            }
+            if (userIdObj instanceof String userId) {
+                try {
+                    return Long.parseLong(userId);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 }

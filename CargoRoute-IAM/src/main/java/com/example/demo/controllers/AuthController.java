@@ -41,7 +41,12 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request) {
-
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/signout")
+    public ResponseEntity<String> signout() {
+        authService.signout();
+        return ResponseEntity.ok("Signed out successfully");
     }
 }

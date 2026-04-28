@@ -5,9 +5,14 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.BookingDetailsDTO;
 import com.example.demo.dto.ExceptionRecordDTO;
 import com.example.demo.dto.RequiredResponseDTO;
@@ -20,6 +25,8 @@ import com.example.demo.service.ExceptionService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Service
 public class ExceptionServiceImpl implements ExceptionService {
 
@@ -30,6 +37,12 @@ public class ExceptionServiceImpl implements ExceptionService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
 
     @Override
     public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
@@ -67,6 +80,22 @@ public class ExceptionServiceImpl implements ExceptionService {
 
         ExceptionRecord exception = dtoToEntity(dto);
         ExceptionRecord saved = repo.save(exception);
+        Long actorUserId = resolveActorUserId(saved.getReportedBy());
+
+        notificationClient.notifyUser(
+            actorUserId,
+            saved.getExceptionID(),
+            "Exception " + saved.getExceptionID() + " recorded for booking " + saved.getBookingId() + ".",
+            "Exception"
+        );
+        // WHY: exceptions need a persisted follow-up task to avoid unresolved incidents.
+        taskClient.createTask(
+            actorUserId,
+            saved.getExceptionID(),
+            "Investigate and resolve exception " + saved.getExceptionID() + ".",
+            null
+        );
+
         return entityToDto(saved);
     }
 
@@ -132,7 +161,24 @@ public class ExceptionServiceImpl implements ExceptionService {
         ExceptionRecord exception = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exception with ID " + id + " not found"));
         exception.setStatus(status);
-        return entityToDto(repo.save(exception));
+        ExceptionRecord updated = repo.save(exception);
+        Long actorUserId = resolveActorUserId(updated.getReportedBy());
+
+        notificationClient.notifyUser(
+            actorUserId,
+            updated.getExceptionID(),
+            "Exception " + updated.getExceptionID() + " status updated to " + updated.getStatus() + ".",
+            "Exception"
+        );
+        // WHY: each status transition should create/refresh a task to maintain resolution ownership.
+        taskClient.createTask(
+            actorUserId,
+            updated.getExceptionID(),
+            "Review latest status and proceed for exception " + updated.getExceptionID() + ".",
+            null
+        );
+
+        return entityToDto(updated);
     }
 
     @Override
@@ -177,5 +223,43 @@ public class ExceptionServiceImpl implements ExceptionService {
         exception.setStatus(dto.getStatus());
         exception.setBookingId(dto.getBookingId());
         return exception;
+    }
+
+    private Long parseUserId(String userValue) {
+        if (userValue == null || userValue.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userValue.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Long resolveActorUserId(String userValue) {
+        Long parsed = parseUserId(userValue);
+        if (parsed != null) {
+            return parsed;
+        }
+        // WHY: reportedBy may store usernames, so fallback to authenticated request user for reliable routing.
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletAttributes) {
+            HttpServletRequest request = servletAttributes.getRequest();
+            Object userId = request.getAttribute("userId");
+            if (userId instanceof Long value) {
+                return value;
+            }
+            if (userId instanceof Integer value) {
+                return value.longValue();
+            }
+            if (userId instanceof String value) {
+                try {
+                    return Long.parseLong(value);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 }

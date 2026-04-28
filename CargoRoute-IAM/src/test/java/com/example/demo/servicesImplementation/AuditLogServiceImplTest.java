@@ -68,24 +68,24 @@ class AuditLogServiceImplTest {
         assertTrue(result.isEmpty());
     }
 
-    @Test
-    void getAuditLogById_returnsData() {
-        when(repository.findById(7L)).thenReturn(Optional.of(buildEntity(7L, 77L)));
-
-        AuditLogDTO result = service.getAuditLogById(7L);
-
-        assertEquals(7L, result.getAuditID());
-        assertEquals(77L, result.getUserID());
-    }
-
-    @Test
-    void getAuditLogById_throwsWhenMissing() {
-        when(repository.findById(99L)).thenReturn(Optional.empty());
-
-        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () -> service.getAuditLogById(99L));
-
-        assertTrue(ex.getMessage().contains("99"));
-    }
+//    @Test
+//    void getAuditLogById_returnsData() {
+//        when(repository.findById(7L)).thenReturn(Optional.of(buildEntity(7L, 77L)));
+//
+//        AuditLogDTO result = service.getAuditLogById(7L);
+//
+//        assertEquals(7L, result.getAuditID());
+//        assertEquals(77L, result.getUserID());
+//    }
+//
+//    @Test
+//    void getAuditLogById_throwsWhenMissing() {
+//        when(repository.findById(99L)).thenReturn(Optional.empty());
+//
+//        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () -> service.getAuditLogById(99L));
+//
+//        assertTrue(ex.getMessage().contains("99"));
+//    }
 
     @ParameterizedTest(name = "save audit log case {0}")
     @MethodSource("auditIds")

@@ -14,4 +14,6 @@ public interface AuthService {
     User signup(AuthRequestDTO request);
 
     AuthResponseDTO login(AuthRequestDTO request);
+
+    void signout();
 }

@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.DTO.*;
+import com.example.demo.annotations.AuditableAction;
 import com.example.demo.entities.Notification;
+import com.example.demo.enums.AuditAction;
+import com.example.demo.enums.AuditResourceType;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.repositories.NotificationRepository;
 import com.example.demo.services.NotificationService;
@@ -30,11 +33,12 @@ public class NotificationServiceImpl implements NotificationService {
 
 //    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackUser")
     @Override
+    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.NOTIFICATION, details = "Notification created")
     public NotificationDTO create(NotificationDTO dto) {
 
         // 1. Validate user existence via USER-SERVICE
     	Boolean exists = restTemplate.getForObject(
-    		    "http://Identity-Access-Management/internal/users/" + dto.getUserID(),
+    		    "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" + dto.getUserID() + "/exists",
     		    Boolean.class
     		);
 
@@ -69,6 +73,44 @@ public class NotificationServiceImpl implements NotificationService {
                    .map(this::mapToDTO)
                    .toList();
     }
+
+    @Override
+    public NotificationDTO markAsRead(Long notificationId, Long userId) {
+        Notification notification = repo.findByNotificationIDAndUserID(notificationId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found: " + notificationId));
+
+        notification.setStatus("READ");
+        return mapToDTO(repo.save(notification));
+    }
+
+    @Override
+    public int markAllAsRead(Long userId) {
+        List<Notification> notifications = repo.findByUserIDOrderByCreatedAtDesc(userId);
+        int updated = 0;
+
+        for (Notification notification : notifications) {
+            if (!"READ".equalsIgnoreCase(notification.getStatus())) {
+                notification.setStatus("READ");
+                updated++;
+            }
+        }
+
+        if (!notifications.isEmpty()) {
+            repo.saveAll(notifications);
+        }
+
+        return updated;
+    }
+
+    @Override
+    public int deleteAllForUser(Long userId) {
+        List<Notification> notifications = repo.findByUserIDOrderByCreatedAtDesc(userId);
+        int deleted = notifications.size();
+        if (deleted > 0) {
+            repo.deleteByUserID(userId);
+        }
+        return deleted;
+    }
     
 
     @Override
@@ -89,7 +131,7 @@ public class NotificationServiceImpl implements NotificationService {
         NotificationDTO notification = getById(id);
 
         InternalUserDTO user = restTemplate.getForObject(
-        	    "http://Identity-Access-Management/internal/users/" + notification.getUserID(),
+        	    "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" + notification.getUserID(),
         	    InternalUserDTO.class
         	);
 
@@ -109,6 +151,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @AuditableAction(action = AuditAction.DELETE, resourceType = AuditResourceType.NOTIFICATION, details = "Notification deleted", resourceIdArgIndex = 0)
     public void delete(Long id) {
         if (!repo.existsById(id)) {
             throw new ResourceNotFoundException("Notification not found: " + id);

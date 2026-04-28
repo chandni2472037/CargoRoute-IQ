@@ -7,12 +7,9 @@ import jakarta.persistence.Column;
 public class AuditLogDTO {
 	
     private Long auditID;
-    @Column(name = "userid")
     private Long userID;
     private String action;
-    @Column(name = "resource_type")
     private String resourceType;
-    @Column(name = "resourceid")
     private Long resourceID;
     private String details;
     private LocalDateTime timestamp;

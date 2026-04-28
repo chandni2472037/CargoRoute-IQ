@@ -1,12 +1,18 @@
 package com.example.demo.servicesImplementation;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.DTO.AuthRequestDTO;
 import com.example.demo.DTO.AuthResponseDTO;
+import com.example.demo.annotations.AuditableAction;
+import com.example.demo.clients.NotificationClient;
 import com.example.demo.entities.User;
+import com.example.demo.enums.AuditAction;
+import com.example.demo.enums.AuditResourceType;
 import com.example.demo.enums.UserRole;
 import com.example.demo.exceptions.DuplicateEmailException;
 import com.example.demo.exceptions.InvalidCredentialsException;
@@ -24,23 +30,29 @@ import com.example.demo.services.AuthService;
 @Service
 public class AuthServiceImpl implements AuthService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
+
     private final UserRepository repo;
     private final PasswordEncoder encoder;
     private final JwtUtil jwtUtil;
+    private final NotificationClient notificationClient;
+    
 
     public AuthServiceImpl(UserRepository repo,
                            PasswordEncoder encoder,
-                           JwtUtil jwtUtil) {
+                           JwtUtil jwtUtil,
+                           NotificationClient notificationClient) {
         this.repo = repo;
         this.encoder = encoder;
         this.jwtUtil = jwtUtil;
+        this.notificationClient = notificationClient;
     }
 
     // SIGNUP
     @Override
+    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.USER, details = "User account created")
     public User signup(AuthRequestDTO request) {
 
-        // Email uniqueness
         if (repo.findByEmail(request.getEmail()) != null) {
             throw new DuplicateEmailException(
                 "Email already exists: " + request.getEmail()
@@ -55,20 +67,31 @@ public class AuthServiceImpl implements AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
-
-        // SAFE ROLE CONVERSION (THIS FIXES YOUR ISSUE)
         user.setRole(UserRole.from(request.getRole()));
-
         user.setPassword(encoder.encode(request.getPassword()));
         user.setStatus(
-            request.getStatus() != null ? request.getStatus() : "ACTIVE"
+            request.getStatus() != null ? request.getStatus() : "Active"
         );
 
-        return repo.save(user);
+        User savedUser = repo.save(user);
+
+        boolean delivered = notificationClient.notifyUser(
+            savedUser.getUserID(),
+            savedUser.getUserID(),
+            "Welcome to CargoRoute IQ. Your account has been created.",
+            "Exception"
+        );
+
+        if (!delivered) {
+            logger.warn("Signup succeeded but welcome notification was not delivered for userId={}", savedUser.getUserID());
+        }
+
+        return savedUser;
     }
 
     // LOGIN
     @Override
+    @AuditableAction(action = AuditAction.LOGIN, resourceType = AuditResourceType.USER, details = "User logged in successfully")
     public AuthResponseDTO login(AuthRequestDTO request) {
 
         User user = repo.findByEmail(request.getEmail());
@@ -89,7 +112,22 @@ public class AuthServiceImpl implements AuthService {
             user.getRole().name(),
             user.getUserID()
         );
+        
+        
+        notificationClient.notifyUser(
+                user.getUserID(),
+                user.getUserID(),
+                "You logged in successfully.",
+                "Exception"
+            );
 
         return new AuthResponseDTO(token);
+    }
+
+    @Override
+    @AuditableAction(action = AuditAction.LOGOUT, resourceType = AuditResourceType.USER, details = "User logged out")
+    public void signout() {
+        // Stateless JWT: logout is handled client-side by token removal.
+        // This endpoint exists for explicit sign-out flow and audit tracking.
     }
 }

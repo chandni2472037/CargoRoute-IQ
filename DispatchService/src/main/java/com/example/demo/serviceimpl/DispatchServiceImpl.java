@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.DispatchDTO;
 import com.example.demo.dto.DispatchResponseDTO;
 import com.example.demo.dto.LoadDTO;
@@ -30,6 +32,12 @@ public class DispatchServiceImpl implements DispatchService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+
     private static final String LOAD_SERVICE_URL =
             "http://ROUTING-SERVICE/cargoRoute/loads/getLoad/";
 
@@ -40,7 +48,21 @@ public class DispatchServiceImpl implements DispatchService {
     @Override
     public DispatchDTO insert(DispatchDTO dto) {
         Dispatch dispatch = convertToEntity(dto);
-        return convertToDto(dispatchRepository.save(dispatch));
+        Dispatch saved = dispatchRepository.save(dispatch);
+        notificationClient.notifyUser(
+                saved.getAssignedDriverID(),
+                saved.getDispatchID(),
+                "Pickup task assigned for dispatch " + saved.getDispatchID() + ".",
+                "Pickup"
+        );
+        // WHY: reassures driver workflows are queued as tasks, not only transient notifications.
+        taskClient.createTask(
+            saved.getAssignedDriverID(),
+            saved.getDispatchID(),
+            "Acknowledge pickup assignment for dispatch " + saved.getDispatchID() + ".",
+            null
+        );
+        return convertToDto(saved);
     }
 
     // ================= FETCH BY ID =================
@@ -137,6 +159,7 @@ public class DispatchServiceImpl implements DispatchService {
     public DispatchDTO updateDispatch(Long dispatchID, DispatchDTO dto) {
 
         Dispatch dispatch = findDispatch(dispatchID);
+        Long previousDriverId = dispatch.getAssignedDriverID();
 
         if (dto.getAssignedDriverID() != null)
             dispatch.setAssignedDriverID(dto.getAssignedDriverID());
@@ -147,7 +170,26 @@ public class DispatchServiceImpl implements DispatchService {
         if (dto.getStatus() != null)
             dispatch.setStatus(dto.getStatus());
 
-        return convertToDto(dispatchRepository.save(dispatch));
+        Dispatch updated = dispatchRepository.save(dispatch);
+
+        if (dto.getAssignedDriverID() != null
+                && !dto.getAssignedDriverID().equals(previousDriverId)) {
+            notificationClient.notifyUser(
+                    updated.getAssignedDriverID(),
+                    updated.getDispatchID(),
+                    "Dispatch " + updated.getDispatchID() + " reassigned to you.",
+                    "Delivery"
+            );
+                // WHY: reassignment requires a new task owner so accountability follows the assigned driver.
+                taskClient.createTask(
+                    updated.getAssignedDriverID(),
+                    updated.getDispatchID(),
+                    "Take over dispatch " + updated.getDispatchID() + " after reassignment.",
+                    null
+                );
+        }
+
+        return convertToDto(updated);
     }
 
     // ================= DELETE =================

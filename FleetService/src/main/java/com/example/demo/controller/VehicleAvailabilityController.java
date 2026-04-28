@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import com.example.demo.entity.VehicleAvailability;
 import com.example.demo.service.VehicleAvailabilityService;
-//import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/cargoRoute/vehicleAvailability")
@@ -16,7 +16,7 @@ public class VehicleAvailabilityController {
 
     // CREATE
     @PostMapping("/createNewVehicleAvailability")
-//    @PreAuthorize("hasRole('FleetManager')")
+    @PreAuthorize("hasAnyRole('FleetManager','Admin')")
     public VehicleAvailability create(@RequestBody VehicleAvailability v) {
         return service.save(v);
     }
@@ -42,14 +42,14 @@ public class VehicleAvailabilityController {
 
     // UPDATE
     @PutMapping("/{id}")
-//    @PreAuthorize("hasRole('FleetManager')")
+    @PreAuthorize("hasRole('FleetManager')")
     public VehicleAvailability update(@PathVariable Long id, @RequestBody VehicleAvailability v) {
         return service.update(id, v);
     }
 
     // DELETE
     @DeleteMapping("/{id}")
-//    @PreAuthorize("hasRole('FleetManager')")
+    @PreAuthorize("hasRole('FleetManager')")
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }

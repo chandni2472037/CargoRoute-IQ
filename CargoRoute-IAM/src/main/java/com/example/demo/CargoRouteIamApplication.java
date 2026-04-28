@@ -19,7 +19,6 @@ public class CargoRouteIamApplication {
 	public RestTemplate getRestTemplate() {
 		return new RestTemplate();
 	}
-	
 
 }
 

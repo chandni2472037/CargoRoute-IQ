@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,24 +29,28 @@ public class BookingController {
     private BookingService service; 
 
     @PostMapping("/addBooking")
+    @PreAuthorize("hasAnyRole('User', 'Admin', 'Shipper')")
     public ResponseEntity<Map<String, String>> addBooking(@RequestBody BookingDTO b) {
         service.createBooking(b);
         return new ResponseEntity<>(Map.of("message", "Booking created successfully."), HttpStatus.CREATED);
     }
 
     @GetMapping("/getBookings")
+    @PreAuthorize("hasAnyRole('User', 'Admin')")
     public ResponseEntity<List<BookingDTO>> fetchAllBookings() {
         List<BookingDTO> bookings = service.getAllBookings();
         return ResponseEntity.ok(bookings);
     }
 
     @GetMapping("/getBookingById/{id}")
+//    @PreAuthorize("hasAnyRole('User', 'Admin')")
     public ResponseEntity<BookingDTO> getByBookingId(@PathVariable Long id) {
         BookingDTO booking = service.getBookingById(id);
         return ResponseEntity.ok(booking);
     }
 
     @PatchMapping("/updateBookingStatus/{id}")
+    @PreAuthorize("hasAnyRole('User', 'Admin')")
     public ResponseEntity<Map<String, String>> modifyBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String statusValue = body.get("status");
         if (statusValue == null || statusValue.isBlank()) {
@@ -57,18 +62,21 @@ public class BookingController {
     }
 
     @GetMapping("/getBookingsByStatus/{status}")
+    @PreAuthorize("hasAnyRole('User', 'Admin')")
     public ResponseEntity<List<BookingDTO>> fetchByBookingStatus(@PathVariable BookingStatus status) {
         List<BookingDTO> bookings = service.getByBookingStatus(status);
         return ResponseEntity.ok(bookings);
     }
 
     @GetMapping("/getBookingsByShipperID/{shipperId}")
+    @PreAuthorize("hasAnyRole('User', 'Admin')")
     public ResponseEntity<List<BookingDTO>> getByShipperId(@PathVariable Long shipperId) {
         List<BookingDTO> bookings = service.getByShipperId(shipperId);
         return ResponseEntity.ok(bookings);
     }
 
     @PostMapping("/importBookings")
+    @PreAuthorize("hasRole('Admin')")
     public ResponseEntity<Map<String, Object>> importBookings(@RequestParam("file") MultipartFile file) {
         try {
             Map<String, Object> result = service.importBookings(file);

@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.DTO.TaskDTO;
+import com.example.demo.annotations.AuditableAction;
 import com.example.demo.entities.Task;
+import com.example.demo.enums.AuditAction;
+import com.example.demo.enums.AuditResourceType;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.repositories.TaskRepository;
 import com.example.demo.services.TaskService;
@@ -26,11 +29,12 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.TASK, details = "Task created")
     public TaskDTO create(TaskDTO dto) {
 
         // Validate assigned user
         Boolean exists = restTemplate.getForObject(
-            "http://Identity-Access-Management/internal/users/" + dto.getAssignedTo()+ "/exists",
+            "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" + dto.getAssignedTo()+ "/exists",
             Boolean.class
         );
 
@@ -67,6 +71,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    @AuditableAction(action = AuditAction.DELETE, resourceType = AuditResourceType.TASK, details = "Task deleted", resourceIdArgIndex = 0)
     public void delete(Long id) {
         if (!repo.existsById(id)) {
             throw new ResourceNotFoundException("Task not found with id: " + id);

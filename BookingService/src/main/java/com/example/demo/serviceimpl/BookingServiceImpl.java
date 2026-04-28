@@ -1,5 +1,7 @@
 package com.example.demo.serviceimpl;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.BookingDTO;
 import com.example.demo.dto.ShipperDTO;
 import com.example.demo.entity.Booking;
@@ -31,6 +33,12 @@ public class BookingServiceImpl implements BookingService {
 
     @Autowired
     private ShipperRepository shipperRepo;
+
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
 
     // Save a new booking or update an existing booking
     public BookingDTO createBooking(BookingDTO b){
@@ -80,6 +88,20 @@ public class BookingServiceImpl implements BookingService {
         }
         Booking booking = convertToEntity(b);
         Booking saved = repo.save(booking);
+        Long userId = saved.getShipper() != null ? saved.getShipper().getShipperID() : null;
+        notificationClient.notifyUser(
+            userId,
+            saved.getBookingID(),
+            "Booking " + saved.getBookingID() + " submitted and pending approval.",
+            "Exception"
+        );
+        // WHY: pending booking approvals require a concrete task so approval SLAs can be tracked.
+        taskClient.createTask(
+            userId,
+            saved.getBookingID(),
+            "Approve submitted booking " + saved.getBookingID() + ".",
+            saved.getPickupWindowStart() != null ? saved.getPickupWindowStart().toLocalDate() : null
+        );
         return convertToDTO(saved);
     }
 

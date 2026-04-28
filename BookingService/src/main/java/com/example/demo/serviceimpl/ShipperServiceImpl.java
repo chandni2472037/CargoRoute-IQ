@@ -17,14 +17,28 @@ public class ShipperServiceImpl implements ShipperService  {
 
     @Autowired
     private ShipperRepository repo;
+  
 
     public ShipperDTO createShipper(ShipperDTO s){
         if (s == null || s.getName() == null || s.getName().trim().isEmpty()) {
             throw new com.example.demo.exception.BadRequestException("Shipper name is required");
         }
         Shipper shipper = convertToEntity(s);
+        
+
         Shipper saved = repo.save(shipper);
         return convertToDTO(saved);
+    }
+
+    public ShipperDTO updateShipper(Long id, ShipperDTO s) {
+        if (id == null) {
+            throw new com.example.demo.exception.BadRequestException("Shipper id is required");
+        }
+        if (!repo.existsById(id)) {
+            throw new com.example.demo.exception.ResourceNotFoundException("Shipper with ID " + id + " not found");
+        }
+        s.setShipperID(id);
+        return createShipper(s);
     }
 
     public List<ShipperDTO> getAllShippers(){

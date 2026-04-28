@@ -2,9 +2,9 @@ server:
  port: 7070
 spring:
  datasource:
-  url: jdbc:mysql://localhost:3306/cargo
+  url: jdbc:mysql://localhost:3306/cargoroute
   username: root
-  password: 1234
+  password: root
  jpa:
   show-sql: true
   hibernate:

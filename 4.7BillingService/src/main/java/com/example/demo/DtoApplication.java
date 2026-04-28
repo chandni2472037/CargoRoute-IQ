@@ -15,7 +15,7 @@ public class DtoApplication {
 		SpringApplication.run(DtoApplication.class, args);
 	}
 
-	  @Bean
+	    @Bean
 	    @LoadBalanced
 	    public RestTemplate restTemplate() {
 	        return new RestTemplate();
