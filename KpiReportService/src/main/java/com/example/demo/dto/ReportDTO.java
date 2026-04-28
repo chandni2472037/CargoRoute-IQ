@@ -1,4 +1,3 @@
-
 package com.example.demo.dto;
 
 import jakarta.validation.constraints.NotNull;
@@ -22,9 +21,6 @@ public class ReportDTO {
 
     private String generatedAt;
 
-    @Size(max = 255, message = "ReportURI max length is 255")
-    private String reportURI;
-
     // Getters and Setters
     public Long getReportID() { return reportID; }
     public void setReportID(Long reportID) { this.reportID = reportID; }
@@ -38,6 +34,4 @@ public class ReportDTO {
     public void setGeneratedBy(String generatedBy) { this.generatedBy = generatedBy; }
     public String getGeneratedAt() { return generatedAt; }
     public void setGeneratedAt(String generatedAt) { this.generatedAt = generatedAt; }
-    public String getReportURI() { return reportURI; }
-    public void setReportURI(String reportURI) { this.reportURI = reportURI; }
 }

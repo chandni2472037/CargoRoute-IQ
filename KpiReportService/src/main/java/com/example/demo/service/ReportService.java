@@ -12,5 +12,7 @@ public interface ReportService {
 
     ReportDTO getById(Long id);
 
+    ReportDTO update(Long id, ReportDTO report);
+
     void delete(Long id);
 }

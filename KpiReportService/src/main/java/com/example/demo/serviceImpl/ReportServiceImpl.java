@@ -32,8 +32,6 @@ public class ReportServiceImpl implements ReportService {
         dto.setGeneratedAt(entity.getGeneratedAt() != null
                 ? entity.getGeneratedAt().toString()
                 : null);
-        dto.setReportURI(entity.getReportURI());
-
         return dto;
     }
 
@@ -48,7 +46,6 @@ public class ReportServiceImpl implements ReportService {
         entity.setMetricsJSON(dto.getMetricsJSON());
         entity.setGeneratedBy(dto.getGeneratedBy());
         entity.setGeneratedAt(LocalDateTime.now());
-        entity.setReportURI(dto.getReportURI());
 
         return entity;
     }
@@ -78,6 +75,21 @@ public class ReportServiceImpl implements ReportService {
                         new ReportNotFoundException("Report not found with id: " + id)
                 );
         return toDTO(entity);
+    }
+
+    // ================= UPDATE =================
+    @Override
+    public ReportDTO update(Long id, ReportDTO reportDTO) {
+        Report existing = repo.findById(id)
+                .orElseThrow(() ->
+                        new ReportNotFoundException("Report not found with id: " + id)
+                );
+        existing.setScope(ReportScope.valueOf(reportDTO.getScope()));
+        existing.setParametersJSON(reportDTO.getParametersJSON());
+        existing.setMetricsJSON(reportDTO.getMetricsJSON());
+        existing.setGeneratedBy(reportDTO.getGeneratedBy());
+        existing.setGeneratedAt(LocalDateTime.now());
+        return toDTO(repo.save(existing));
     }
 
     // ================= DELETE =================

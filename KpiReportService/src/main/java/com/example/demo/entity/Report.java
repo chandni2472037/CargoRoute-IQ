@@ -50,9 +50,6 @@ public class Report {
     private LocalDateTime generatedAt; 
     // Field to store the timestamp when the report was generated.
 
-    private String reportURI; 
-    // Field to store the URI or path where the report file is located.
-
     public Report() {} 
     // Default no-argument constructor required by JPA.
 
@@ -115,15 +112,5 @@ public class Report {
         this.generatedAt = generatedAt; 
     } 
     // Setter method for generatedAt.
-
-    public String getReportURI() { 
-        return reportURI; 
-    } 
-    // Getter method for reportURI.
-
-    public void setReportURI(String reportURI) { 
-        this.reportURI = reportURI; 
-    } 
-    // Setter method for reportURI.
 } 
 // End of the Report entity class.

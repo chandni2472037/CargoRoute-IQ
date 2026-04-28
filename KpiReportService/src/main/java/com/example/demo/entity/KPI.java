@@ -5,7 +5,8 @@ import jakarta.persistence.*;
 // Imports JPA annotations and persistence classes from Jakarta Persistence API.
 
 @Entity 
-// Marks this class as a JPA entity, mapping it to a database table.
+@Table(name = "kpi")
+// Marks this class as a JPA entity, mapping it to the 'kpi' database table.
 
 public class KPI { 
 // Declares the public class 'KPI' representing a Key Performance Indicator record.
