@@ -1,10 +1,13 @@
 package com.example.demo.serviceimpl;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
@@ -23,6 +26,10 @@ import com.example.demo.service.ProofOfDeliveryService;
 public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
 
     private static final String POD_CB = "podService";
+    
+    @Value("${pod.upload-dir}")
+    private String podUploadDir;
+    
 
     @Autowired
     private ProofOfDeliveryRepository repository;
@@ -33,16 +40,50 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
     private static final String BOOKING_SERVICE_URL =
             "http://BOOKING-SERVICE/cargoRoute/booking/getBooking/";
 
-    // ================= CREATE =================
+    
+    private String savePodImage(MultipartFile file) {
+        try {
+            File dir = new File(podUploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+
+            File destination = new File(dir, fileName);
+            file.transferTo(destination);
+            return "/pods/" + fileName;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload POD image", e);
+        }
+    }
     @Override
-    public ProofOfDeliveryDTO create(ProofOfDeliveryDTO dto) {
+    public ProofOfDeliveryDTO createWithImage(
+            ProofOfDeliveryDTO dto,
+            MultipartFile file) {
 
         if (dto.getBookingID() == null) {
             throw new BadRequestException("bookingID is mandatory");
         }
-        ProofOfDelivery saved = repository.save(convertToEntity(dto));
 
-        return convertToDTO(saved);
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("POD image is required");
+        }
+
+        String type = file.getContentType();
+        if (!"image/jpeg".equals(type) && !"image/png".equals(type)) {
+            throw new BadRequestException("Only JPG or PNG allowed");
+        }
+
+        String podUri = savePodImage(file);
+
+        ProofOfDelivery pod = convertToEntity(dto);
+        pod.setPodURI(podUri);
+        pod.setStatus(ProofOfDeliveryStatus.UPLOADED);
+        pod.setDeliveredAt(java.time.LocalDateTime.now());
+
+        return convertToDTO(repository.save(pod));
     }
 
     // ================= FETCH BY ID =================
@@ -57,6 +98,7 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
         response.setBooking(null);
         return response;
     }
+    
 
     // ================= FETCH ALL =================
     @Override
