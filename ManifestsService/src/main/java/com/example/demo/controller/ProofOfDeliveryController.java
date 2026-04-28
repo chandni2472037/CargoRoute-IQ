@@ -22,12 +22,12 @@ public class ProofOfDeliveryController {
     private ProofOfDeliveryService service;
 
 
-    @PostMapping(value = "/createProofOfDeliveryWithImage", consumes = "multipart/form-data")
-    	public ResponseEntity<?> createWithImage(
+    @PostMapping(value = "/createProofOfDelivery", consumes = "multipart/form-data")
+    	public ResponseEntity<?> createProofOfDelivery(
     	        @RequestPart("pod") ProofOfDeliveryDTO dto,
     	        @RequestPart("file") MultipartFile file) {
 
-    	    ProofOfDeliveryDTO saved = service.createWithImage(dto, file);
+    	    ProofOfDeliveryDTO saved = service.create(dto, file);
 
     	    return ResponseEntity.status(HttpStatus.CREATED).body(
     	        Map.of(
