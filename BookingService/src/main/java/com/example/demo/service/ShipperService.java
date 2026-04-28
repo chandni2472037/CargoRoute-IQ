@@ -6,7 +6,6 @@ import com.example.demo.entity.enums.ShipperStatus;
 
 public interface ShipperService {
     ShipperDTO createShipper(ShipperDTO s);
-    ShipperDTO updateShipper(Long id, ShipperDTO s);
     List<ShipperDTO> getAllShippers();
     ShipperDTO getShipperById(Long id);
     List<ShipperDTO> getByShipperStatus(ShipperStatus status);

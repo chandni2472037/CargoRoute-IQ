@@ -30,7 +30,7 @@ public class ExceptionController {
 
     @PostMapping("/addException")
     // Create a new ExceptionRecord — allow Shipper and operational roles (Admin must not create)
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','Admin')")
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER')")
     public ResponseEntity<ExceptionRecordDTO> addException(@RequestBody ExceptionRecordDTO e) {
         ExceptionRecordDTO created = service.createException(e);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
@@ -38,7 +38,7 @@ public class ExceptionController {
 
     @GetMapping("/getExceptions")
     // Retrieve exceptions; SHIPPER sees only their own records
-//    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','Admin','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
     public ResponseEntity<List<RequiredResponseDTO>> fetchAllExceptions() {
         List<RequiredResponseDTO> all = service.getAllExceptions();
         return ResponseEntity.ok(all);

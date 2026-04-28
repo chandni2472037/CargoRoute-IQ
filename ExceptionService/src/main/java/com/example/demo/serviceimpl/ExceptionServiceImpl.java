@@ -1,10 +1,8 @@
 package com.example.demo.serviceimpl;
- 
+
 import java.util.List;
 import java.util.stream.Collectors;
- 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -12,7 +10,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.security.access.AccessDeniedException;
- 
+
 import com.example.demo.dto.BookingDetailsDTO;
 import com.example.demo.dto.ExceptionRecordDTO;
 import com.example.demo.dto.RequiredResponseDTO;
@@ -23,25 +21,25 @@ import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ExceptionRepository;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.ExceptionService;
- 
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
- 
+
 @Service
 public class ExceptionServiceImpl implements ExceptionService {
- 
+
     private static final String EXCEPTION_SERVICE_CB = "bookingService";
- 
+
     @Autowired
     private ExceptionRepository repo;
- 
+
     @Autowired
     private RestTemplate restTemplate;
- 
+
     @Autowired
     private JwtUtil jwtUtil;
- 
+
     @Override
         public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
         try {
@@ -57,7 +55,7 @@ public class ExceptionServiceImpl implements ExceptionService {
             if (dto.getStatus() == null) {
                 dto.setStatus(ExceptionStatus.PENDING);
             }
- 
+
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || authentication.getName() == null) {
                 throw new AccessDeniedException("No authentication context found");
@@ -68,7 +66,7 @@ public class ExceptionServiceImpl implements ExceptionService {
             if (userId == null) {
                 throw new AccessDeniedException("Could not resolve userId from token");
             }
- 
+
             // Verify the booking exists in the Booking Service before saving
             try {
                 BookingDetailsDTO booking = restTemplate.getForObject(
@@ -92,7 +90,7 @@ public class ExceptionServiceImpl implements ExceptionService {
             } catch (Exception ex) {
                 throw new BadRequestException("Could not verify Booking ID " + dto.getBookingId() + ": " + ex.getMessage());
             }
- 
+
             ExceptionRecord exception = dtoToEntity(dto);
             exception.setReportedBy(userId); // always from auth context, never from frontend
             ExceptionRecord saved = repo.save(exception);
@@ -105,7 +103,7 @@ public class ExceptionServiceImpl implements ExceptionService {
             throw new BadRequestException("Failed to create exception: " + ex.getMessage());
         }
     }
- 
+
     @Override
     @CircuitBreaker(name = EXCEPTION_SERVICE_CB, fallbackMethod = "getAllExceptionsFallback")
     public List<RequiredResponseDTO> getAllExceptions() {
@@ -114,7 +112,7 @@ public class ExceptionServiceImpl implements ExceptionService {
                 .findFirst()
                 .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .orElse(null) : null;
- 
+
         if (role != null && ("ADMIN".equalsIgnoreCase(role) || "DISPATCHER".equalsIgnoreCase(role) || "FLEETMANAGER".equalsIgnoreCase(role)
             || "WAREHOUSEMANAGER".equalsIgnoreCase(role) || "WAREHOUSE_MANAGER".equalsIgnoreCase(role)
             || "BILLINGCLERK".equalsIgnoreCase(role) || "BILLING_CLERK".equalsIgnoreCase(role)
@@ -134,7 +132,7 @@ public class ExceptionServiceImpl implements ExceptionService {
                     .collect(Collectors.toList());
         }
     }
- 
+
     public List<RequiredResponseDTO> getAllExceptionsFallback(Throwable t) {
         return repo.findAll().stream()
                 .map(e -> {
@@ -145,16 +143,16 @@ public class ExceptionServiceImpl implements ExceptionService {
                 })
                 .collect(Collectors.toList());
     }
- 
+
     @Override
     @CircuitBreaker(name = EXCEPTION_SERVICE_CB, fallbackMethod = "getExceptionByIdFallback")
     public RequiredResponseDTO getExceptionById(Long id) {
         ExceptionRecord exception = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exception with ID " + id + " not found"));
- 
+
         RequiredResponseDTO response = new RequiredResponseDTO();
         response.setExceptiondto(entityToDto(exception));
- 
+
         if (exception.getBookingId() != null) {
             BookingDetailsDTO bookingDto = null;
             String url = "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/{id}";
@@ -165,10 +163,10 @@ public class ExceptionServiceImpl implements ExceptionService {
             }
             response.setBookingdto(bookingDto);
         }
- 
+
         return response;
     }
- 
+
     public RequiredResponseDTO getExceptionByIdFallback(Long id, Throwable t) {
         ExceptionRecord exception = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exception with ID " + id + " not found"));
@@ -177,7 +175,7 @@ public class ExceptionServiceImpl implements ExceptionService {
         fallback.setBookingdto(null);
         return fallback;
     }
- 
+
     @Override
     public ExceptionRecordDTO updateExceptionStatus(Long id, ExceptionStatus status) {
         ExceptionRecord exception = repo.findById(id)
@@ -185,7 +183,7 @@ public class ExceptionServiceImpl implements ExceptionService {
         exception.setStatus(status);
         return entityToDto(repo.save(exception));
     }
- 
+
     @Override
     public List<RequiredResponseDTO> getExceptionByBookingId(Long bookingId) {
         List<ExceptionRecord> exceptions = repo.findByBookingId(bookingId);
@@ -196,14 +194,14 @@ public class ExceptionServiceImpl implements ExceptionService {
                 .map(e -> getExceptionById(e.getExceptionID()))
                 .collect(Collectors.toList());
     }
- 
+
     @Override
     public List<RequiredResponseDTO> getExceptionByStatus(ExceptionStatus status) {
         return repo.findByStatus(status).stream()
                 .map(e -> getExceptionById(e.getExceptionID()))
                 .collect(Collectors.toList());
     }
- 
+
     private ExceptionRecordDTO entityToDto(ExceptionRecord exception) {
         ExceptionRecordDTO dto = new ExceptionRecordDTO();
         dto.setExceptionID(exception.getExceptionID());
@@ -216,7 +214,7 @@ public class ExceptionServiceImpl implements ExceptionService {
         dto.setBookingId(exception.getBookingId());
         return dto;
     }
- 
+
     private ExceptionRecord dtoToEntity(ExceptionRecordDTO dto) {
         ExceptionRecord exception = new ExceptionRecord();
         exception.setExceptionID(dto.getExceptionID());
@@ -230,4 +228,4 @@ public class ExceptionServiceImpl implements ExceptionService {
         return exception;
     }
 }
- 
+

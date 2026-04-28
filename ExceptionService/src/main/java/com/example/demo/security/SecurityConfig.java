@@ -28,24 +28,33 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-
-            .cors(org.springframework.security.config.Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
 
+                // Auth endpoints
+                .requestMatchers("/auth/**").permitAll()
 
-                .requestMatchers("/cargoRoute/exception/**").permitAll()
+                // Internal calls
+                .requestMatchers("/internal/**").permitAll()
 
-                // Exception endpoints - require authentication
-                .requestMatchers("/cargoRoute/claims/**").permitAll()
+                // Admin only
+                .requestMatchers("/users/**").hasRole("ADMIN")
+                .requestMatchers("/auditlogs/**").hasRole("ADMIN")
 
-                // Everything else requires authentication
+                .requestMatchers("/cargoRoute/exception/addException").hasAnyRole("SHIPPER", "DISPATCHER")
+                .requestMatchers("/cargoRoute/exception/getExceptions").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/cargoRoute/exception/export").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers("/cargoRoute/claim/addClaim").hasAnyRole("SHIPPER", "ADMIN")
+                .requestMatchers("/cargoRoute/claim/getClaims").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/cargoRoute/claim/export").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")
+                .requestMatchers("/cargoRoute/claim/updateClaimStatus/**").hasRole("ADMIN")
+                .requestMatchers("/cargoRoute/exception/updateExceptionStatus/**").hasAnyRole("DISPATCHER", "DRIVER", "ADMIN")
 
+                // Everything else
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
 }
