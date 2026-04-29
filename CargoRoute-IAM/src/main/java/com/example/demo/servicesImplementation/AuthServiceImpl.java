@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import com.example.demo.DTO.AuthRequestDTO;
 import com.example.demo.DTO.AuthResponseDTO;
 import com.example.demo.annotations.AuditableAction;
-import com.example.demo.clients.NotificationClient;
 import com.example.demo.entities.User;
 import com.example.demo.enums.AuditAction;
 import com.example.demo.enums.AuditResourceType;
@@ -35,17 +34,15 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository repo;
     private final PasswordEncoder encoder;
     private final JwtUtil jwtUtil;
-    private final NotificationClient notificationClient;
     
 
     public AuthServiceImpl(UserRepository repo,
                            PasswordEncoder encoder,
-                           JwtUtil jwtUtil,
-                           NotificationClient notificationClient) {
+                           JwtUtil jwtUtil) {
         this.repo = repo;
         this.encoder = encoder;
         this.jwtUtil = jwtUtil;
-        this.notificationClient = notificationClient;
+        
     }
 
     // SIGNUP
@@ -75,17 +72,6 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = repo.save(user);
 
-        boolean delivered = notificationClient.notifyUser(
-            savedUser.getUserID(),
-            savedUser.getUserID(),
-            "Welcome to CargoRoute IQ. Your account has been created.",
-            "Exception"
-        );
-
-        if (!delivered) {
-            logger.warn("Signup succeeded but welcome notification was not delivered for userId={}", savedUser.getUserID());
-        }
-
         return savedUser;
     }
 
@@ -114,13 +100,6 @@ public class AuthServiceImpl implements AuthService {
         );
         
         
-        notificationClient.notifyUser(
-                user.getUserID(),
-                user.getUserID(),
-                "You logged in successfully.",
-                "Exception"
-            );
-
         return new AuthResponseDTO(token);
     }
 

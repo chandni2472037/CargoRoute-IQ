@@ -30,7 +30,7 @@ public class ExceptionController {
 
     @PostMapping("/addException")
     // Create a new ExceptionRecord — allow Shipper and operational roles (Admin must not create)
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER')")
+    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN')")
     public ResponseEntity<ExceptionRecordDTO> addException(@RequestBody ExceptionRecordDTO e) {
         ExceptionRecordDTO created = service.createException(e);
         return new ResponseEntity<>(created, HttpStatus.CREATED);

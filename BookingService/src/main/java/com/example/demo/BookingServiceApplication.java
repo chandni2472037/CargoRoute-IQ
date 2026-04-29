@@ -16,11 +16,13 @@ public class BookingServiceApplication {
 		SpringApplication.run(BookingServiceApplication.class, args);
 
 	}
-
+	
 	@Bean
 	@LoadBalanced
-	public RestTemplate restTemplate() {
+	public RestTemplate getRestTemplate() {
 		return new RestTemplate();
 	}
+
+
 
 }
