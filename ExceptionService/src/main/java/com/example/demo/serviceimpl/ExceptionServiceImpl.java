@@ -20,6 +20,7 @@ import com.example.demo.exception.BadRequestException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ExceptionRepository;
 import com.example.demo.security.JwtUtil;
+import com.example.demo.clients.NotificationClient;
 import com.example.demo.service.ExceptionService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -40,8 +41,11 @@ public class ExceptionServiceImpl implements ExceptionService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private NotificationClient notificationClient;
+
     @Override
-        public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
+    public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
         try {
             if (dto == null) {
                 throw new BadRequestException("Exception request body must not be null");
@@ -94,6 +98,15 @@ public class ExceptionServiceImpl implements ExceptionService {
             ExceptionRecord exception = dtoToEntity(dto);
             exception.setReportedBy(userId); // always from auth context, never from frontend
             ExceptionRecord saved = repo.save(exception);
+
+            String notifMessage = String.format(
+                "Exception #%d reported for Booking #%d — Type: %s. Status: %s.",
+                saved.getExceptionID(), saved.getBookingId(),
+                saved.getType() != null ? saved.getType().name() : "N/A",
+                saved.getStatus() != null ? saved.getStatus().name() : "N/A"
+            );
+            notificationClient.notifyUser(userId, saved.getExceptionID(), notifMessage, "Exception");
+
             return entityToDto(saved);
         } catch (AccessDeniedException ex) {
             throw ex;
@@ -181,7 +194,17 @@ public class ExceptionServiceImpl implements ExceptionService {
         ExceptionRecord exception = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exception with ID " + id + " not found"));
         exception.setStatus(status);
-        return entityToDto(repo.save(exception));
+        ExceptionRecord updated = repo.save(exception);
+
+        if (updated.getReportedBy() != null) {
+            String message = String.format(
+                "Exception #%d status updated to %s for Booking #%d.",
+                updated.getExceptionID(), status.name(), updated.getBookingId()
+            );
+            notificationClient.notifyUser(updated.getReportedBy(), updated.getExceptionID(), message, "Exception");
+        }
+
+        return entityToDto(updated);
     }
 
     @Override

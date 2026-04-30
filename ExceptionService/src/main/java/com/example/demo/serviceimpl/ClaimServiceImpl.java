@@ -16,6 +16,7 @@ import com.example.demo.entity.ExceptionRecord;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ClaimRepository;
 import com.example.demo.repository.ExceptionRepository;
+import com.example.demo.clients.NotificationClient;
 import com.example.demo.service.ClaimService;
 import com.example.demo.service.ExceptionService;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,6 +37,9 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private NotificationClient notificationClient;
 
     // Save a new Claim or update an existing one
     public ClaimDTO createClaim(ClaimDTO dto){
@@ -59,6 +63,16 @@ public class ClaimServiceImpl implements ClaimService {
         // Ensure ownership is set from authenticated context — ignore frontend-provided ownership
         claim.setFiledBy(userId);
         Claim saved = repo.save(claim);
+
+        String message = String.format(
+            "Claim #%d filed against Exception #%d for amount %.2f. Status: %s.",
+            saved.getClaimID(),
+            saved.getExceptionRecord() != null ? saved.getExceptionRecord().getExceptionID() : 0L,
+            saved.getAmountClaimed() != null ? saved.getAmountClaimed() : 0.0,
+            saved.getStatus() != null ? saved.getStatus().name() : "N/A"
+        );
+        notificationClient.notifyUser(userId, saved.getClaimID(), message, "Exception");
+
         return convertToDTO(saved);
     }
 
@@ -92,6 +106,16 @@ public class ClaimServiceImpl implements ClaimService {
                 .orElseThrow(() -> new ResourceNotFoundException("Claim with ID " + id + " not found"));
         claim.setStatus(status);
         Claim updated = repo.save(claim);
+
+        if (updated.getFiledBy() != null) {
+            String message = String.format(
+                "Claim #%d status updated to %s for Exception #%d.",
+                updated.getClaimID(), status.name(),
+                updated.getExceptionRecord() != null ? updated.getExceptionRecord().getExceptionID() : 0L
+            );
+            notificationClient.notifyUser(updated.getFiledBy(), updated.getClaimID(), message, "Exception");
+        }
+
         return convertToDTO(updated);
     }
 

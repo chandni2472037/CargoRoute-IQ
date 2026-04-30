@@ -28,7 +28,7 @@ public class ClaimController {
     private ClaimService service;
 
     @PostMapping("/addClaim")
-    // Create a new Claim record — only Shipper (and Admin if supported) may file claims
+    // Create a new Claim Admin if supported) may file claims
     @PreAuthorize("hasAnyRole('SHIPPER','ADMIN')")
     public ResponseEntity<Map<String, String>> addClaim(@RequestBody ClaimDTO c) {
         service.createClaim(c);
