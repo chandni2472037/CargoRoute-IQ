@@ -23,6 +23,11 @@ public class TaskController {
         return new ResponseEntity<>(service.create(dto), HttpStatus.CREATED);
     }
 
+    @PutMapping("/update/{id}")
+    public ResponseEntity<TaskDTO> update(@PathVariable Long id, @RequestBody TaskDTO dto) {
+        return ResponseEntity.ok(service.update(id, dto));
+    }
+
     @GetMapping("getAllTasks")
     public ResponseEntity<List<TaskDTO>> getAll() {
         return ResponseEntity.ok(service.getAll());

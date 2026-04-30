@@ -7,6 +7,8 @@ public interface TaskService {
 
     TaskDTO create(TaskDTO dto);
 
+    TaskDTO update(Long id, TaskDTO dto);
+
     List<TaskDTO> getAll();
 
     TaskDTO getById(Long id);

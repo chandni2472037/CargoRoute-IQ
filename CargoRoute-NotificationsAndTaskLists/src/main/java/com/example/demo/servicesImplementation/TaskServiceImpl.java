@@ -55,6 +55,39 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    @AuditableAction(action = AuditAction.UPDATE, resourceType = AuditResourceType.TASK, details = "Task updated", resourceIdArgIndex = 0)
+    public TaskDTO update(Long id, TaskDTO dto) {
+        Task task = repo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+
+        if (dto.getAssignedTo() != null) {
+            Boolean exists = restTemplate.getForObject(
+                "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" + dto.getAssignedTo() + "/exists",
+                Boolean.class
+            );
+            if (exists == null || !exists) {
+                throw new ResourceNotFoundException("User not found with id: " + dto.getAssignedTo());
+            }
+            task.setAssignedTo(dto.getAssignedTo());
+        }
+
+        if (dto.getRelatedEntityID() != null) {
+            task.setRelatedEntityID(dto.getRelatedEntityID());
+        }
+        if (dto.getDescription() != null) {
+            task.setDescription(dto.getDescription());
+        }
+        if (dto.getDueDate() != null) {
+            task.setDueDate(dto.getDueDate());
+        }
+        if (dto.getStatus() != null) {
+            task.setStatus(dto.getStatus());
+        }
+
+        return mapToDTO(repo.save(task));
+    }
+
+    @Override
     public List<TaskDTO> getAll() {
         List<TaskDTO> list = new ArrayList<>();
         for (Task t : repo.findAll()) {
