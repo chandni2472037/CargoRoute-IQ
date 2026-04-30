@@ -1,11 +1,16 @@
 package com.example.demo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import com.example.demo.entity.VehicleAvailability;
 import com.example.demo.service.VehicleAvailabilityService;
-import org.springframework.security.access.prepost.PreAuthorize;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/cargoRoute/vehicleAvailability")
@@ -16,12 +21,15 @@ public class VehicleAvailabilityController {
 
     // CREATE
     @PostMapping("/createNewVehicleAvailability")
-    @PreAuthorize("hasAnyRole('FleetManager','Admin')")
-    public VehicleAvailability create(@RequestBody VehicleAvailability v) {
-        return service.save(v);
+    public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody VehicleAvailability v) {
+        VehicleAvailability saved = service.save(v);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Vehicle availability created successfully.");
+        response.put("vehicleAvailability", saved);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    // READ ALL
+ // READ ALL
     @GetMapping("/getAllVehicleAvailabilities")
     public List<VehicleAvailability> getAll() {
         return service.getAll();
@@ -32,25 +40,26 @@ public class VehicleAvailabilityController {
     public VehicleAvailability get(@PathVariable Long id) {
         return service.getById(id);
     }
- // READ BY VEHICLE ID (new endpoint)
+
+    // READ BY VEHICLE ID
     @GetMapping("/vehicle/{vehicleId}")
     public List<VehicleAvailability> getByVehicle(@PathVariable Long vehicleId) {
         return service.getByVehicleId(vehicleId);
     }
 
 
-
     // UPDATE
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('FleetManager')")
-    public VehicleAvailability update(@PathVariable Long id, @RequestBody VehicleAvailability v) {
+    @PutMapping("/updateVehicleAvailability/{id}")
+    public VehicleAvailability update(@Valid @PathVariable Long id, @RequestBody VehicleAvailability v) {
         return service.update(id, v);
     }
 
     // DELETE
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('FleetManager')")
-    public void delete(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
         service.delete(id);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Vehicle availability deleted successfully for ID " + id + ".");
+        return ResponseEntity.ok(response);
     }
 }

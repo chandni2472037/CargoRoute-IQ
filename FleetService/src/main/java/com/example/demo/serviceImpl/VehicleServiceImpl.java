@@ -1,6 +1,7 @@
 package com.example.demo.serviceImpl;
 
 import java.util.List;
+
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +49,12 @@ public class VehicleServiceImpl implements VehicleService {
         dto.setStatus(vehicle.getStatus());
         dto.setLastMaintenanceAt(vehicle.getLastMaintenanceAt());
 
+        // ✅ Include driverID in DTO
+        dto.setDriverID(vehicle.getDriverID());
         // ✅ Enrich driver (DispatchService runs on port 7001 at /drivers/{id})
         if (vehicle.getDriverID() != null) {
             try {
-                String driverServiceUrl = "http://DISPATCH-SERVICE/drivers/" + vehicle.getDriverID();
+            	String driverServiceUrl = "http://DISPATCH-SERVICE/cargoRoute/drivers/getDriverByDriverId/" + vehicle.getDriverID();
                 DriverDTO driverDTO = restTemplate.getForObject(driverServiceUrl, DriverDTO.class);
                 dto.setDriver(driverDTO);
             } catch (Exception e) {
@@ -128,7 +131,7 @@ public class VehicleServiceImpl implements VehicleService {
                     "Pickup task available for vehicle " + saved.getRegNumber() + ".",
                     "Pickup"
             );
-            // WHY: vehicle onboarding should create a concrete pickup task for the assigned driver.
+            
             taskClient.createTask(
                 saved.getDriverID(),
                 saved.getVehicleID(),
@@ -156,7 +159,10 @@ public class VehicleServiceImpl implements VehicleService {
         vehicle.setLastMaintenanceAt(vehicleDTO.getLastMaintenanceAt());
 
         // ✅ Update driver
-        if (vehicleDTO.getDriver() != null) {
+     // ✅ Update driver
+        if (vehicleDTO.getDriverID() != null) {
+            vehicle.setDriverID(vehicleDTO.getDriverID());
+        } else if (vehicleDTO.getDriver() != null) {
             vehicle.setDriverID(vehicleDTO.getDriver().getDriverID());
         }
 
@@ -240,7 +246,7 @@ public class VehicleServiceImpl implements VehicleService {
     @CircuitBreaker(name = "fleetService", fallbackMethod = "fleetFallback")
     public List<VehicleAvailabilityDTO> getVehicleAvailabilities(Long vehicleId) {
         return restTemplate.exchange(
-                "http://FLEET-SERVICE/cargoRoute/vehicleAvailability/vehicle/" + vehicleId,
+        		"http://FLEET-SERVICE/cargoRoute/vehicleAvailability/vehicle/" + vehicleId,
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<List<VehicleAvailabilityDTO>>() {}

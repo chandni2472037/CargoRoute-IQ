@@ -26,7 +26,11 @@ public class VehicleAvailabilityServiceImpl implements VehicleAvailabilityServic
         Long vehicleId = availability.getVehicle().getVehicleID();
         Vehicle vehicle = vehicleRepo.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found with id: " + vehicleId));
-
+     // ✅ Business rule: endTime must be after startTime
+        if (availability.getEndTime() != null && availability.getStartTime() != null &&
+            availability.getEndTime().isBefore(availability.getStartTime())) {
+            throw new IllegalArgumentException("End time must be after start time");
+        }
         availability.setVehicle(vehicle);
         return repo.save(availability);
     }
@@ -50,7 +54,11 @@ public class VehicleAvailabilityServiceImpl implements VehicleAvailabilityServic
         Long vehicleId = availability.getVehicle().getVehicleID();
         Vehicle vehicle = vehicleRepo.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found with id: " + vehicleId));
-
+        // ✅ Business rule check again
+        if (availability.getEndTime() != null && availability.getStartTime() != null &&
+            availability.getEndTime().isBefore(availability.getStartTime())) {
+            throw new IllegalArgumentException("End time must be after start time");
+        }
         existing.setVehicle(vehicle);
         existing.setDate(availability.getDate());
         existing.setStartTime(availability.getStartTime());

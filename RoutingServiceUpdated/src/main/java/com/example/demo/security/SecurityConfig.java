@@ -31,10 +31,12 @@ public class SecurityConfig {
             .cors(org.springframework.security.config.Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/cargoRoute/vehicleAvailability/**").permitAll()
+                //  endpoints
+                .requestMatchers("/cargoRoute/routes/**").permitAll()
+                .requestMatchers("/cargoRoute/routing-rules/**").permitAll()
 
-                // Fleet endpoints - require FleetManager or Admin role
-                .requestMatchers("/cargoRoute/vehicles/**").permitAll()
+                // Routing endpoints - require authentication
+                .requestMatchers("/cargoRoute/loads/**").permitAll()
 
                 // Everything else requires authentication
                 .anyRequest().authenticated()

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.demo.entity.enums.VehicleStatus;
 import com.example.demo.entity.enums.VehicleType;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
@@ -23,8 +24,12 @@ public class Vehicle {
     private VehicleType type;
 
     private Double maxWeightKg;
+    
+    @Column(name = "max_volume_m3")
     private Double maxVolumeM3;
-    private String status;
+    
+    @Enumerated(EnumType.STRING)
+    private VehicleStatus status;
     private LocalDateTime lastMaintenanceAt;
 
     
@@ -77,11 +82,11 @@ public class Vehicle {
 		this.maxVolumeM3 = maxVolumeM3;
 	}
 
-	public String getStatus() {
+	public VehicleStatus getStatus() {
 		return status;
 	}
 
-	public void setStatus(String status) {
+	public void setStatus(VehicleStatus status) {
 		this.status = status;
 	}
 
@@ -110,15 +115,4 @@ public class Vehicle {
 	}
 
 	
-	public void addAvailability(VehicleAvailability availability) {
-	    availabilities.add(availability);
-	    availability.setVehicle(this); // 🔑 ensures back-reference is set
-	}
-
-	public void removeAvailability(VehicleAvailability availability) {
-	    availabilities.remove(availability);
-	    availability.setVehicle(null);
-	}
-    
-    
 }

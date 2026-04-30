@@ -1,56 +1,30 @@
 package com.example.demo.dto;
 
+
 import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
-
-import com.example.demo.entity.enums.VehicleStatus;
 import com.example.demo.entity.enums.VehicleType;
 
+
 public class VehicleDTO {
-
     private Long vehicleID;
-
-    @NotBlank(message = "Registration number cannot be blank")
     private String regNumber;
-
-    @NotNull(message = "Vehicle type is required")
     private VehicleType type;
-
-    @NotNull(message = "Max weight is required")
-    @Min(value = 100, message = "Weight must be at least 100kg")
     private Double maxWeightKg;
-
-    @NotNull(message = "Max volume is required")
-    @Min(value = 1, message = "Volume must be greater than 0")
     private Double maxVolumeM3;
-
-    @NotNull(message = "Status is required")
-    private VehicleStatus status;
-
-
+    private String status;
     private LocalDateTime lastMaintenanceAt;
- // ✅ Accept driverID in requests
-    private Long driverID;
-
+   
     
-
-	private DriverDTO driver;
-
-    // ✅ Use DTO list instead of entity list
-    private List<VehicleAvailabilityDTO> availabilities = new ArrayList<>();
     
-    public Long getDriverID() {
-		return driverID;
-	}
+    private DriverDTO driver;  
+    // Nested driver details
 
-	public void setDriverID(Long driverID) {
-		this.driverID = driverID;
-	}
+    private List<VehicleAvailabilityDTO> availabilities;
+
 	public Long getVehicleID() {
 		return vehicleID;
 	}
@@ -91,11 +65,11 @@ public class VehicleDTO {
 		this.maxVolumeM3 = maxVolumeM3;
 	}
 
-	public VehicleStatus getStatus() {
+	public String getStatus() {
 		return status;
 	}
 
-	public void setStatus(VehicleStatus status) {
+	public void setStatus(String status) {
 		this.status = status;
 	}
 
@@ -122,6 +96,10 @@ public class VehicleDTO {
 	public void setAvailabilities(List<VehicleAvailabilityDTO> availabilities) {
 		this.availabilities = availabilities;
 	}
+    
+	
 
     
+
+	
 }
