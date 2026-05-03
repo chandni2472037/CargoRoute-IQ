@@ -29,14 +29,22 @@ public class JwtFilter extends OncePerRequestFilter{
 	    String auth = request.getHeader("Authorization");
 	    System.out.println("Im inside jwtfiler");
 	    
+	    
+	     String path = request.getRequestURI();
+	     // Skip JWT for auth APIs & preflight
+	     if (request.getMethod().equalsIgnoreCase("OPTIONS")
+	         || path.startsWith("/cargoRoute/auth")) {
+
+	         filterChain.doFilter(request, response);
+	         return;
+	     }
+
+	    
 	
 	    if(auth != null && auth.startsWith("Bearer ")){
-	    	System.out.println("Im jwtfilter, checking auth");
 	        String token = auth.substring(7);
 	
 
-	
-	        
 	        String username = jwtUtil.extractUsername(token);
 	        String role = jwtUtil.extractRole(token);
 	        Long userId = jwtUtil.extractUserId(token); 

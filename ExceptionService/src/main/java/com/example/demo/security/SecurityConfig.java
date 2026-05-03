@@ -34,12 +34,7 @@ public class SecurityConfig {
                 // Auth endpoints
                 .requestMatchers("/auth/**").permitAll()
 
-                // Internal calls
-                .requestMatchers("/internal/**").permitAll()
 
-                // Admin only
-                .requestMatchers("/users/**").hasRole("ADMIN")
-                .requestMatchers("/auditlogs/**").hasRole("ADMIN")
 
                 .requestMatchers("/cargoRoute/exception/addException").hasAnyRole("SHIPPER", "DISPATCHER","ADMIN")
                 .requestMatchers("/cargoRoute/exception/getExceptions").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "BILLING_CLERK", "ANALYST")

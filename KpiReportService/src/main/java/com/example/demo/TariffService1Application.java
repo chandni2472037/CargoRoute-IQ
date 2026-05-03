@@ -13,7 +13,6 @@ public class TariffService1Application {
 
 	public static void main(String[] args) {
 		SpringApplication.run(TariffService1Application.class, args);
-		
 
 	}
 	

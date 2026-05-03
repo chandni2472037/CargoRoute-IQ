@@ -28,6 +28,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
+            .cors(org.springframework.security.config.Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
 
@@ -35,11 +36,11 @@ public class SecurityConfig {
                 .requestMatchers("/cargoRoute/auth/**").permitAll()
 
                 // Internal calls
-                .requestMatchers("/cargoRoute/internal/**").permitAll()
+                .requestMatchers("/cargoRoute//internal/**").permitAll()
 
                 // Admin only
                 .requestMatchers("/cargoRoute/users/**").hasRole("Admin")
-                .requestMatchers("/cargoRoute/auditLogs/**").hasRole("Admin")
+                .requestMatchers("/cargoRoute/auditlogs/**").hasRole("Admin")
 
                 // Everything else
                 .anyRequest().authenticated()

@@ -19,7 +19,5 @@ public class DtoApplication {
 	    @LoadBalanced
 	    public RestTemplate restTemplate() {
 	        return new RestTemplate();
-
-
-}
+        }
 }
