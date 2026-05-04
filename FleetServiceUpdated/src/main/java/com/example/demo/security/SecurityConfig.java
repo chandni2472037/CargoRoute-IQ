@@ -33,8 +33,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/cargoRoute/vehicleAvailability/**").permitAll()
 
-                // Fleet endpoints - require FleetManager or Admin role
-                .requestMatchers("/cargoRoute/vehicles/**").permitAll()
+                // Fleet endpoints - Admin, Dispatcher, FleetManager
+                .requestMatchers("/cargoRoute/vehicles/**").hasAnyRole("Admin", "Dispatcher", "FleetManager")
 
                 // Everything else requires authentication
                 .anyRequest().authenticated()

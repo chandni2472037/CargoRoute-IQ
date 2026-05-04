@@ -37,8 +37,6 @@ public class VehicleDTO {
  // ✅ Accept driverID in requests
     private Long driverID;
 
-    
-
 	private DriverDTO driver;
 
     // ✅ Use DTO list instead of entity list
