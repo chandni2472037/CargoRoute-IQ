@@ -33,10 +33,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
 
-                // Dispatch endpoints - require authentication
-                .requestMatchers("/cargoRoute/dispatches/**").permitAll()
-                .requestMatchers("/cargoRoute/driver-acknowledgement/**").permitAll()
-                .requestMatchers("/cargoRoute/drivers/**").permitAll()
+                // Dispatch endpoints - Admin, Dispatcher, FleetManager
+                .requestMatchers("/cargoRoute/dispatches/**").hasAnyRole("Admin", "Dispatcher", "FleetManager")
+                .requestMatchers("/cargoRoute/driver-acknowledgement/**").hasAnyRole("Admin", "Dispatcher", "FleetManager")
+                .requestMatchers("/cargoRoute/drivers/**").hasAnyRole("Admin", "Dispatcher", "FleetManager")
 
                 // Everything else requires authentication
                 .anyRequest().authenticated()

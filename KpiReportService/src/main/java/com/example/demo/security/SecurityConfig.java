@@ -33,9 +33,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 
 
-                // KPI Report endpoints - require Manager or Admin role
-                .requestMatchers("/cargoRoute/reports/**").hasAnyRole("Manager", "Admin")
-                .requestMatchers("/cargoRoute/kpis/**").hasAnyRole("Manager", "Admin")
+                // KPI Report endpoints - Admin, Analyst
+                .requestMatchers("/cargoRoute/reports/**").hasAnyRole("Admin", "Analyst")
+                .requestMatchers("/cargoRoute/kpis/**").hasAnyRole("Admin", "Analyst")
 
                 // Everything else requires authentication
                 .anyRequest().authenticated()

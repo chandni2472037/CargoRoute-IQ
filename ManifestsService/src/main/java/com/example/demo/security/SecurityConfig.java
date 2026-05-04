@@ -33,10 +33,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
 
-                // Manifest endpoints - require authentication
-                .requestMatchers("/cargoRoute/manifests/**").permitAll()
-                .requestMatchers("/cargoRoute/proof-of-delivery/**").permitAll()
-                .requestMatchers("/cargoRoute/handovers/**").permitAll()    
+                // Manifest endpoints - Admin, Dispatcher, WarehouseManager, Analyst
+                .requestMatchers("/cargoRoute/manifests/**").hasAnyRole("Admin", "Dispatcher", "WarehouseManager", "Analyst")
+                .requestMatchers("/cargoRoute/proof-of-delivery/**").hasAnyRole("Admin", "Dispatcher", "WarehouseManager", "Analyst")
+                .requestMatchers("/cargoRoute/handovers/**").hasAnyRole("Admin", "Dispatcher", "WarehouseManager", "Analyst")    
                 // Everything else requires authentication
                 .anyRequest().authenticated()
             )
