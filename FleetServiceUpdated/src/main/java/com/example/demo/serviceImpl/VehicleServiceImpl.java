@@ -54,7 +54,7 @@ public class VehicleServiceImpl implements VehicleService {
         // ✅ Enrich driver (DispatchService runs on port 7001 at /drivers/{id})
         if (vehicle.getDriverID() != null) {
             try {
-            	String driverServiceUrl = "http://DISPATCH-SERVICE/cargoRoute/drivers/getDriverByDriverId/" + vehicle.getDriverID();
+            	 String driverServiceUrl = "http://DISPATCH-SERVICE/cargoRoute/drivers/getDriverByDriverId/" + vehicle.getDriverID();
                 DriverDTO driverDTO = restTemplate.getForObject(driverServiceUrl, DriverDTO.class);
                 dto.setDriver(driverDTO);
             } catch (Exception e) {
