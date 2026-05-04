@@ -3,7 +3,7 @@
 	public class RequiredResponseDTO {
 
 	private VehicleDTO vehicle;
-	private LoadDTO loadDto;
+	private LoadDTO load;
 
 	public VehicleDTO getVehicle() {
 		return vehicle;
@@ -11,11 +11,11 @@
 	public void setVehicle(VehicleDTO vehicle) {
 		this.vehicle = vehicle;
 	}
-	public LoadDTO getLoadDto() {
-		return loadDto;
+	public LoadDTO getLoad() {
+		return load;
 	}
-	public void setLoadDto(LoadDTO loadDto) {
-		this.loadDto = loadDto;
+	public void setLoad(LoadDTO load) {
+		this.load = load;
 	}
 
 	

@@ -2,6 +2,7 @@ package com.example.demo.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -32,8 +33,13 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
 
-                // Auth endpoints
-                .requestMatchers("/cargoRoute/auth/**").permitAll()
+
+            		// Allow preflight
+            		.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+            		// Allow auth endpoints
+            		.requestMatchers("/cargoRoute/auth/**").permitAll()
+
 
                 // Internal calls
                 .requestMatchers("/cargoRoute//internal/**").permitAll()

@@ -113,7 +113,7 @@ public class LoadServiceImpl implements LoadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Load not found with id: " + id));
 
         RequiredResponseDTO response = new RequiredResponseDTO();
-        response.setLoadDto(entityToDto(load));
+        response.setLoad(entityToDto(load));
 
         if (load.getVehicleID() != null) {
             // ✅ Only one call now — VehicleDTO already has driver + availabilities
@@ -134,7 +134,7 @@ public class LoadServiceImpl implements LoadService {
         loadDto.setLoadID(id);
         loadDto.setStatus("UNAVAILABLE");
         loadDto.setLoadCode("FALLBACK");
-        fallback.setLoadDto(loadDto);
+        fallback.setLoad(loadDto);
         return fallback;
     }
 
