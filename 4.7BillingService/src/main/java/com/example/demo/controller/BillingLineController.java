@@ -28,7 +28,7 @@ public class BillingLineController {
 
    // CREATE — BillingClerk or Admin
 
-   @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN')")
+   @PreAuthorize("hasAnyRole('BillingClerk','Admin')")
 
    @PostMapping("/create")
 
@@ -40,7 +40,7 @@ public class BillingLineController {
 
    // GET BY ID — BillingClerk, Admin, Analyst
 
-   @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN','ANALYST')")
+//   @PreAuthorize("hasAnyRole('BillingClerk','Admin','Shipper','Analyst')")
 
    @GetMapping("/getBy/{id}")
 
@@ -52,7 +52,7 @@ public class BillingLineController {
 
    // GET ALL — BillingClerk, Admin, Analyst
 
-   @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN','ANALYST')")
+//   @PreAuthorize("hasAnyRole('BillingClerk','Admin','Shipper','Analyst')")
 
    @GetMapping("/getAll")
 
@@ -64,7 +64,7 @@ public class BillingLineController {
 
    // UPDATE — BillingClerk or Admin
 
-   @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN')")
+   @PreAuthorize("hasAnyRole('BillingClerk','Admin')")
 
    @PutMapping("/update/{id}")
 
@@ -77,8 +77,7 @@ public class BillingLineController {
    }
 
    // DELETE — Admin only
-
-   @PreAuthorize("hasRole('ADMIN')")
+   @PreAuthorize("hasRole('Admin')")
 
    @DeleteMapping("/delete/{id}")
 

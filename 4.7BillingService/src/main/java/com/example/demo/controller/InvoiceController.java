@@ -30,7 +30,7 @@ public class InvoiceController {
  
     // ✅ CREATE — BillingClerk or Admin
 
-    @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN')")
+    @PreAuthorize("hasAnyRole('BillingClerk','Admin')")
 
     @PostMapping("/create")
 
@@ -44,7 +44,7 @@ public class InvoiceController {
  
     // ✅ GET ALL — BillingClerk, Admin, Shipper, Analyst
 
-    @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN','SHIPPER','ANALYST')")
+//    @PreAuthorize("hasAnyRole('BillingClerk','Admin','Shipper','Analyst')")
 
     @GetMapping("/getAll")
 
@@ -56,7 +56,7 @@ public class InvoiceController {
  
     // ✅ GET BY ID — BillingClerk, Admin, Shipper, Analyst
 
-    @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN','SHIPPER','ANALYST')")
+//    @PreAuthorize("hasAnyRole('BillingClerk','Admin','Shipper','Analyst')")
 
     @GetMapping("/getBy/{id}")
 
@@ -70,7 +70,7 @@ public class InvoiceController {
  
     // ✅ UPDATE — BillingClerk or Admin
 
-    @PreAuthorize("hasAnyRole('BILLINGCLERK','ADMIN')")
+    @PreAuthorize("hasAnyRole('BillingClerk','Admin')")
 
     @PutMapping("/update/{id}")
 
@@ -86,7 +86,7 @@ public class InvoiceController {
  
     // ✅ DELETE — Admin only
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('Admin')")
 
     @DeleteMapping("/delete/{id}")
 

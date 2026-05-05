@@ -59,7 +59,7 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
  
     private static final String BOOKING_SERVICE_URL =
 
-            "http://BOOKING-SERVICE/cargoRoute/booking/getBooking/";
+            "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/";
  
     
 

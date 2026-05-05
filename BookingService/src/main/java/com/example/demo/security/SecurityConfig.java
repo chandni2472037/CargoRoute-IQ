@@ -32,45 +32,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
 
-                // Auth endpoints
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/cargoRoute/booking/**").permitAll()
+                .requestMatchers("/cargoRoute/shipper/**").permitAll()
 
-                // Internal calls
-                .requestMatchers("/internal/**").permitAll()
-
-                // Allow service-to-service booking lookup without auth (used by ExceptionService)
-                .requestMatchers("/cargoRoute/booking/getBookingById/**").permitAll()
-
-                // Admin only
-                .requestMatchers("/users/**").hasRole("ADMIN")
-                .requestMatchers("/auditlogs/**").hasRole("ADMIN")
-
-                // ── Booking endpoints ────────────────────────────────────────────────
-                // addBooking — SHIPPER, ADMIN only
-                .requestMatchers(HttpMethod.POST,  "/cargoRoute/booking/addBooking").hasAnyRole("SHIPPER", "ADMIN")
-                // importBookings — SHIPPER, ADMIN only
-                .requestMatchers(HttpMethod.POST,  "/cargoRoute/booking/importBookings").hasAnyRole("SHIPPER", "ADMIN")
-                // getBookings — SHIPPER, DISPATCHER, ADMIN, FLEETMANAGER, WAREHOUSEMANAGER, ANALYST (read-only)
-                .requestMatchers(HttpMethod.GET,   "/cargoRoute/booking/getBookings").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "ANALYST")
-                // getBookingById — permitAll (service-to-service; already declared above, repeated here for readability)
-                // updateBookingStatus — DISPATCHER, DRIVER (operational only)
-                .requestMatchers(HttpMethod.PATCH, "/cargoRoute/booking/updateBookingStatus/*").hasAnyRole("DISPATCHER", "DRIVER")
-                // getBookingsByStatus — all authenticated roles
-                .requestMatchers(HttpMethod.GET,   "/cargoRoute/booking/getBookingsByStatus/*").hasAnyRole("SHIPPER", "DISPATCHER", "DRIVER", "WAREHOUSEMANAGER",  "BILLINGCLERK", "ANALYST", "ADMIN")
-                // getBookingsByShipperID — SHIPPER, DISPATCHER, ADMIN
-                .requestMatchers(HttpMethod.GET,   "/cargoRoute/booking/getBookingsByShipperID/*").hasAnyRole("SHIPPER", "DISPATCHER", "ADMIN", "BILLINGCLERK", "ANALYST")
-
-                // ── Shipper endpoints ────────────────────────────────────────────────
-                // addShipper  — ADMIN only
-                .requestMatchers(HttpMethod.POST, "/cargoRoute/shipper/addShipper").hasRole("ADMIN")
-                // updateShipper — ADMIN only
-                .requestMatchers(HttpMethod.PUT,  "/cargoRoute/shipper/updateShipper/*").hasRole("ADMIN")
-                // getShippers — ADMIN, DISPATCHER, SHIPPER, ANALYST, FLEETMANAGER
-                .requestMatchers(HttpMethod.GET,  "/cargoRoute/shipper/getShippers").hasAnyRole("ADMIN", "DISPATCHER", "SHIPPER", "ANALYST", "FLEETMANAGER", "WAREHOUSEMANAGER",  "BILLINGCLERK")
-                // getShipper/{id} — ADMIN, DISPATCHER, SHIPPER, FLEETMANAGER
-                .requestMatchers(HttpMethod.GET,  "/cargoRoute/shipper/getShipper/*").hasAnyRole("ADMIN", "DISPATCHER", "SHIPPER", "FLEETMANAGER", "WAREHOUSEMANAGER", "BILLINGCLERK", "ANALYST")
-                // getShippersByStatus/{status} — ADMIN, DISPATCHER, ANALYST
-                .requestMatchers(HttpMethod.GET,  "/cargoRoute/shipper/getShippersByStatus/*").hasAnyRole("ADMIN", "DISPATCHER", "ANALYST", "WAREHOUSEMANAGER",  "BILLINGCLERK")
 
                 // Everything else
                 .anyRequest().authenticated()

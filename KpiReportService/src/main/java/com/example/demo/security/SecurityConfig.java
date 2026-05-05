@@ -34,7 +34,7 @@ public class SecurityConfig {
                 
 
                 // KPI Report endpoints - Admin, Analyst
-                .requestMatchers("/cargoRoute/reports/**").hasAnyRole("Admin", "Analyst")
+                .requestMatchers("/cargoRoute/reports/**").permitAll()
                 .requestMatchers("/cargoRoute/kpis/**").hasAnyRole("Admin", "Analyst")
 
                 // Everything else requires authentication

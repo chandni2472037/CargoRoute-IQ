@@ -38,7 +38,7 @@ public class ExceptionController {
 
     @GetMapping("/getExceptions")
     // Retrieve exceptions; SHIPPER sees only their own records
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
+//    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
     public ResponseEntity<List<RequiredResponseDTO>> fetchAllExceptions() {
         List<RequiredResponseDTO> all = service.getAllExceptions();
         return ResponseEntity.ok(all);

@@ -47,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
 
     // SIGNUP
     @Override
-    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.USER, details = "User account created")
+//    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.USER, details = "User account created")
     public User signup(AuthRequestDTO request) {
 
         if (repo.findByEmail(request.getEmail()) != null) {
@@ -77,7 +77,7 @@ public class AuthServiceImpl implements AuthService {
 
     // LOGIN
     @Override
-    @AuditableAction(action = AuditAction.LOGIN, resourceType = AuditResourceType.USER, details = "User logged in successfully")
+//    @AuditableAction(action = AuditAction.LOGIN, resourceType = AuditResourceType.USER, details = "User logged in successfully")
     public AuthResponseDTO login(AuthRequestDTO request) {
 
         User user = repo.findByEmail(request.getEmail());
@@ -104,7 +104,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @AuditableAction(action = AuditAction.LOGOUT, resourceType = AuditResourceType.USER, details = "User logged out")
+//    @AuditableAction(action = AuditAction.LOGOUT, resourceType = AuditResourceType.USER, details = "User logged out")
     public void signout() {
         // Stateless JWT: logout is handled client-side by token removal.
         // This endpoint exists for explicit sign-out flow and audit tracking.

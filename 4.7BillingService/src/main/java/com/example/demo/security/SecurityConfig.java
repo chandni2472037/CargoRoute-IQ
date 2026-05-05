@@ -51,55 +51,49 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
  
                 // ── Auth & Internal ───────────────────────────────
+            		
+            		.requestMatchers("/cargoRoute/billing-lines/**").permitAll()
+            		.requestMatchers("/cargoRoute/invoices/**").permitAll()
+            		.requestMatchers("/cargoRoute/tariffs/**").permitAll()
 
-                .requestMatchers("/auth/**").permitAll()
 
-                .requestMatchers("/internal/**").permitAll()
-
-                .requestMatchers("/cargoRoute/booking/getBookingById/**").permitAll()
  
-                // ── Admin only ────────────────────────────────────
-
-                .requestMatchers("/users/**").hasRole("ADMIN")
-
-                .requestMatchers("/auditlogs/**").hasRole("ADMIN")
- 
-                // ── BillingLine endpoints ─────────────────────────
-
-                .requestMatchers(HttpMethod.POST,   "/cargoRoute/billing-lines/create").hasAnyRole("BILLINGCLERK","ADMIN")
-
-                .requestMatchers(HttpMethod.GET,    "/cargoRoute/billing-lines/getBy/*").hasAnyRole("BILLINGCLERK","ADMIN","ANALYST")
-
-                .requestMatchers(HttpMethod.GET,    "/cargoRoute/billing-lines/getAll").hasAnyRole("BILLINGCLERK","ADMIN","ANALYST")
-
-                .requestMatchers(HttpMethod.PUT,    "/cargoRoute/billing-lines/update/*").hasAnyRole("BILLINGCLERK","ADMIN")
-
-                .requestMatchers(HttpMethod.DELETE, "/cargoRoute/billing-lines/delete/*").hasRole("ADMIN")
- 
-                // ── Invoice endpoints ─────────────────────────────
-
-                .requestMatchers(HttpMethod.POST,   "/cargoRoute/invoices/create").hasAnyRole("BILLINGCLERK","ADMIN")
-
-                .requestMatchers(HttpMethod.GET,    "/cargoRoute/invoices/getAll").hasAnyRole("BILLINGCLERK","ADMIN","SHIPPER","ANALYST")
-
-                .requestMatchers(HttpMethod.GET,    "/cargoRoute/invoices/getBy/*").hasAnyRole("BILLINGCLERK","ADMIN","SHIPPER","ANALYST")
-
-                .requestMatchers(HttpMethod.PUT,    "/cargoRoute/invoices/update/*").hasAnyRole("BILLINGCLERK","ADMIN")
-
-                .requestMatchers(HttpMethod.DELETE, "/cargoRoute/invoices/delete/*").hasRole("ADMIN")
- 
-                // ── Tariff endpoints ──────────────────────────────
-
-                .requestMatchers(HttpMethod.POST,   "/cargoRoute/tariffs/create").hasRole("ADMIN")
-
-                .requestMatchers(HttpMethod.GET,    "/cargoRoute/tariffs/getAll").hasAnyRole("ADMIN","BILLINGCLERK","ANALYST")
-
-                .requestMatchers(HttpMethod.GET,    "/cargoRoute/tariffs/getBy/*").hasAnyRole("ADMIN","BILLINGCLERK","ANALYST")
-
-                .requestMatchers(HttpMethod.PUT,    "/cargoRoute/tariffs/update/*").hasRole("ADMIN")
-
-                .requestMatchers(HttpMethod.DELETE, "/cargoRoute/tariffs/delete/*").hasRole("ADMIN")
- 
+//                // ── BillingLine endpoints ─────────────────────────
+//
+//                .requestMatchers(HttpMethod.POST,   "/cargoRoute/billing-lines/create").hasAnyRole("BillingClerk","Admin")
+//
+//                .requestMatchers(HttpMethod.GET,    "/cargoRoute/billing-lines/getBy/*").hasAnyRole("BillingClerk","Admin","Analyst")
+//
+//                .requestMatchers(HttpMethod.GET,    "/cargoRoute/billing-lines/getAll").hasAnyRole("BillingClerk","Admin","Analyst")
+//
+//                .requestMatchers(HttpMethod.PUT,    "/cargoRoute/billing-lines/update/*").hasAnyRole("BillingClerk","Admin")
+//
+//                .requestMatchers(HttpMethod.DELETE, "/cargoRoute/billing-lines/delete/*").hasRole("Admin")
+// 
+//                // ── Invoice endpoints ─────────────────────────────
+//
+//                .requestMatchers(HttpMethod.POST,   "/cargoRoute/invoices/create").hasAnyRole("BillingClerk","Admin")
+//
+//                .requestMatchers(HttpMethod.GET,    "/cargoRoute/invoices/getAll").hasAnyRole("BillingClerk","Admin","Analyst","Shipper")
+//
+//                .requestMatchers(HttpMethod.GET,    "/cargoRoute/invoices/getBy/*").hasAnyRole("BillingClerk","Admin","Analyst","Shipper")
+//
+//                .requestMatchers(HttpMethod.PUT,    "/cargoRoute/invoices/update/*").hasAnyRole("BillingClerk","Admin")
+//
+//                .requestMatchers(HttpMethod.DELETE, "/cargoRoute/invoices/delete/*").hasRole("Admin")
+// 
+//                // ── Tariff endpoints ──────────────────────────────
+//
+//                .requestMatchers(HttpMethod.POST,   "/cargoRoute/tariffs/create").hasRole("Admin")
+//
+//                .requestMatchers(HttpMethod.GET,    "/cargoRoute/tariffs/getAll").hasAnyRole("BillingClerk","Admin","Analyst")
+//
+//                .requestMatchers(HttpMethod.GET,    "/cargoRoute/tariffs/getBy/*").hasAnyRole("BillingClerk","Admin","Analyst")
+//
+//                .requestMatchers(HttpMethod.PUT,    "/cargoRoute/tariffs/update/*").hasRole("Admin")
+//
+//                .requestMatchers(HttpMethod.DELETE, "/cargoRoute/tariffs/delete/*").hasRole("Admin")
+// 
                 // ── Everything else ───────────────────────────────
 
                 .anyRequest().authenticated()

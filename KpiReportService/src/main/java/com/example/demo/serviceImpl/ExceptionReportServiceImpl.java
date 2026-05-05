@@ -22,8 +22,8 @@ import com.example.demo.service.ExceptionReportService;
 public class ExceptionReportServiceImpl implements ExceptionReportService {
 
     // Direct ports — no Eureka dependency
-    private static final String EXCEPTION_BASE = "http://localhost:7071";
-    private static final String BOOKING_BASE   = "http://localhost:7070";
+    private static final String EXCEPTION_BASE = "http://EXCEPTION-SERVICE";
+    private static final String BOOKING_BASE   = "http://BOOKING-SERVICE";
 
     private final RestTemplate directRestTemplate = new RestTemplate();
 

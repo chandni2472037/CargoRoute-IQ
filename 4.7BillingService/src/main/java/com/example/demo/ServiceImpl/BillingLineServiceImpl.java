@@ -110,7 +110,7 @@ public class BillingLineServiceImpl implements BillingLineService {
     @CircuitBreaker(name = "bookingService", fallbackMethod = "bookingFallback")
     public BookingDTO getBookingWithCB(Long bookingID) {
         return restTemplate.getForObject(
-                "http://BOOKING-SERVICE/cargoRoute/booking/getBooking/" + bookingID,
+                "http://BOOKING-SERVICE/cargoRoute/booking/getBookingById/" + bookingID,
                 BookingDTO.class);
     }
  

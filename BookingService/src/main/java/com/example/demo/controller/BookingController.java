@@ -29,14 +29,14 @@ public class BookingController {
     private BookingService service;
 
     @PostMapping("/addBooking")
-    @PreAuthorize("hasAnyRole('SHIPPER','ADMIN')")
+    @PreAuthorize("hasAnyRole('Shipper','Admin')")
     public ResponseEntity<Map<String, String>> addBooking(@RequestBody BookingDTO b) {
         service.createBooking(b);
         return new ResponseEntity<>(Map.of("message", "Booking created successfully."), HttpStatus.CREATED);
     }
 
     @GetMapping("/getBookings")
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN','FLEETMANAGER','WAREHOUSEMANAGER','BILLINGCLERK','ANALYST')")
+//    @PreAuthorize("hasAnyRole('Shipper','Dispatcher','Admin','FleetManager','WarehouseManager','BillingClerk','Analyst')")
     public ResponseEntity<List<BookingDTO>> fetchAllBookings() {
         List<BookingDTO> bookings = service.getAllBookings();
         return ResponseEntity.ok(bookings);
@@ -52,7 +52,7 @@ public class BookingController {
     }
 
     @PatchMapping("/updateBookingStatus/{id}")
-    @PreAuthorize("hasAnyRole('DISPATCHER','DRIVER')")
+    @PreAuthorize("hasAnyRole('Dispatcher','Driver')")
     public ResponseEntity<Map<String, String>> modifyBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String statusValue = body.get("status");
         if (statusValue == null || statusValue.isBlank()) {
@@ -64,21 +64,21 @@ public class BookingController {
     }
 
     @GetMapping("/getBookingsByStatus/{status}")
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','DRIVER','WAREHOUSEMANAGER','ANALYST','ADMIN')")
+//    @PreAuthorize("hasAnyRole('Shipper','Dispatcher','Admin','WarehouseManager','Analyst')")
     public ResponseEntity<List<BookingDTO>> fetchByBookingStatus(@PathVariable BookingStatus status) {
         List<BookingDTO> bookings = service.getByBookingStatus(status);
         return ResponseEntity.ok(bookings);
     }
 
     @GetMapping("/getBookingsByShipperID/{shipperId}")
-    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN')")
+//    @PreAuthorize("hasAnyRole('SHIPPER','DISPATCHER','ADMIN')")
     public ResponseEntity<List<BookingDTO>> getByShipperId(@PathVariable Long shipperId) {
         List<BookingDTO> bookings = service.getByShipperId(shipperId);
         return ResponseEntity.ok(bookings);
     }
 
     @PostMapping("/importBookings")
-    @PreAuthorize("hasAnyRole('SHIPPER','ADMIN')")
+    @PreAuthorize("hasAnyRole('Shipper','Admin')")
     public ResponseEntity<Map<String, Object>> importBookings(@RequestParam("file") MultipartFile file) {
         try {
             Map<String, Object> result = service.importBookings(file);

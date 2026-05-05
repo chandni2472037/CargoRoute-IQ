@@ -15,9 +15,9 @@ public class OnTimeReportResponseDTO {
     // private String reportURI;
 
     // Summary fields (unpacked from metricsJSON for convenience)
-    private int totalBookings;
-    private int onTimeBookings;
-    private String onTimePercentage;
+//    private int totalBookings;
+//    private int onTimeBookings;
+//    private String onTimePercentage;
 
     public OnTimeReportResponseDTO() {}
 
@@ -39,12 +39,12 @@ public class OnTimeReportResponseDTO {
     public String getGeneratedAt() { return generatedAt; }
     public void setGeneratedAt(String generatedAt) { this.generatedAt = generatedAt; }
 
-    public int getTotalBookings() { return totalBookings; }
-    public void setTotalBookings(int totalBookings) { this.totalBookings = totalBookings; }
-
-    public int getOnTimeBookings() { return onTimeBookings; }
-    public void setOnTimeBookings(int onTimeBookings) { this.onTimeBookings = onTimeBookings; }
-
-    public String getOnTimePercentage() { return onTimePercentage; }
-    public void setOnTimePercentage(String onTimePercentage) { this.onTimePercentage = onTimePercentage; }
+//    public int getTotalBookings() { return totalBookings; }
+//    public void setTotalBookings(int totalBookings) { this.totalBookings = totalBookings; }
+//
+//    public int getOnTimeBookings() { return onTimeBookings; }
+//    public void setOnTimeBookings(int onTimeBookings) { this.onTimeBookings = onTimeBookings; }
+//
+//    public String getOnTimePercentage() { return onTimePercentage; }
+//    public void setOnTimePercentage(String onTimePercentage) { this.onTimePercentage = onTimePercentage; }
 }

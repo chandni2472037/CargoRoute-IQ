@@ -17,7 +17,7 @@ public class TariffController {
     private TariffService service;
     // ================= CREATE =================
     // Admin only
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('Admin')")
     @PostMapping("/create")
     public ResponseEntity<TariffDTO> createTariff(
             @Valid @RequestBody TariffDTO tariffDTO) {
@@ -26,7 +26,7 @@ public class TariffController {
  
     // ================= GET ALL =================
     // Admin, BillingClerk, Analyst
-    @PreAuthorize("hasAnyRole('ADMIN','BILLINGCLERK','ANALYST')")
+//    @PreAuthorize("hasAnyRole('BillingClerk','Admin','Shipper','Analyst')")
     @GetMapping("/getAll")
     public ResponseEntity<List<TariffDTO>> getAllTariffs() {
         return ResponseEntity.ok(service.getAll());
@@ -34,7 +34,7 @@ public class TariffController {
  
     // ================= GET BY ID =================
     // Admin, BillingClerk, Analyst
-    @PreAuthorize("hasAnyRole('ADMIN','BILLINGCLERK','ANALYST')")
+//    @PreAuthorize("hasAnyRole('BillingClerk','Admin','Analyst')")
     @GetMapping("/getBy/{id}")
     public ResponseEntity<TariffDTO> getTariffById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getById(id));
@@ -42,7 +42,7 @@ public class TariffController {
  
     // ================= UPDATE =================
     // Admin only
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('Admin')")
     @PutMapping("/update/{id}")
     public ResponseEntity<TariffDTO> updateTariff(
             @PathVariable Long id,
@@ -53,7 +53,7 @@ public class TariffController {
     // ================= DELETE =================
 
     // Admin only
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('Admin')")
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteTariff(@PathVariable Long id) {
         service.delete(id);

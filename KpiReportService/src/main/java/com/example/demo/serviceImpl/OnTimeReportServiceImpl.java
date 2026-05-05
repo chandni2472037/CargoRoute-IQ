@@ -153,9 +153,9 @@ public class OnTimeReportServiceImpl implements OnTimeReportService {
         response.setMetricsJSON(saved.getMetricsJSON());
         response.setGeneratedBy(saved.getGeneratedBy());
         response.setGeneratedAt(saved.getGeneratedAt().toString());
-        response.setTotalBookings(totalBookings);
-        response.setOnTimeBookings(onTimeBookings);
-        response.setOnTimePercentage(onTimePct);
+//        response.setTotalBookings(totalBookings);
+//        response.setOnTimeBookings(onTimeBookings);
+//        response.setOnTimePercentage(onTimePct);
 
         return response;
     }

@@ -96,7 +96,7 @@ public class InvoiceServiceimpl implements InvoiceService {
 
             try {
                 shipperDTO = restTemplate.getForObject(
-                        "http://BOOKING-SERVICE/shippers/" + invoice.getShipperID(),
+                        "http://BOOKING-SERVICE/cargoRoute/shipper/getShipper/" + invoice.getShipperID(),
                         ShipperDTO.class
                 );
             } catch (Exception e) {
@@ -126,7 +126,7 @@ public class InvoiceServiceimpl implements InvoiceService {
 
         try {
             shipperDTO = restTemplate.getForObject(
-                    "http://BOOKING-SERVICE/shippers/" + invoice.getShipperID(),
+                    "http://BOOKING-SERVICE/cargoRoute/shipper/getShipper/" + invoice.getShipperID(),
                     ShipperDTO.class
             );
         } catch (Exception e) {

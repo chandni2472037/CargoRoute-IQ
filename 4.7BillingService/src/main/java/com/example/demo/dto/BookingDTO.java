@@ -2,7 +2,6 @@ package com.example.demo.dto;
 
 import java.time.LocalDateTime;
 
-
 import com.example.demo.enums.BookingStatus;
 
 public class BookingDTO {
@@ -34,6 +33,9 @@ public class BookingDTO {
     private String specialHandlingFlags;
 
     private BookingStatus status;
+
+    /** Populated by backend on read; ignored if sent by frontend. */
+    private Long createdByUserId;
 
     private LocalDateTime createdAt;
     
@@ -152,6 +154,14 @@ public class BookingDTO {
 
     public void setStatus(BookingStatus status) {
         this.status = status;
+    }
+
+    public Long getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public void setCreatedByUserId(Long createdByUserId) {
+        this.createdByUserId = createdByUserId;
     }
 
     public LocalDateTime getCreatedAt() {
