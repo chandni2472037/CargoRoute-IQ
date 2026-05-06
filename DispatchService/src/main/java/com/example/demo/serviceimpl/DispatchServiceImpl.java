@@ -10,6 +10,11 @@ import org.springframework.stereotype.Service;
  
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.clients.DriverUserResolver;
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.DispatchDTO;
  
 import com.example.demo.dto.DispatchResponseDTO;
@@ -41,10 +46,25 @@ public class DispatchServiceImpl implements DispatchService {
     @Autowired
  
     private DispatchRepository dispatchRepository;
+    
+    
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+    
+    @Autowired
+    private DriverUserResolver driverUserResolver;
+    
 
     @Autowired
  
     private RestTemplate restTemplate;
+    
+    @Autowired
+    private RoleResolverClient roleResolverClient;
+
 
     private static final String LOAD_SERVICE_URL =
  
@@ -57,14 +77,50 @@ public class DispatchServiceImpl implements DispatchService {
     // ================= CREATE =================
  
     @Override
- 
     public DispatchDTO insert(DispatchDTO dto) {
- 
-        Dispatch dispatch = convertToEntity(dto);
- 
-        return convertToDto(dispatchRepository.save(dispatch));
- 
+
+    	
+
+if (dto.getLoadID() == null) {
+        throw new IllegalArgumentException(
+            "Dispatch must be created for an existing Load. loadID is required."
+        );
     }
+
+        Dispatch dispatch = convertToEntity(dto);
+        Dispatch saved = dispatchRepository.save(dispatch);
+        
+        Long driverId = roleResolverClient.getUserByRole("Driver");
+        Long adminId = roleResolverClient.getUserByRole("Admin");
+
+     // ✅ TASK → DRIVER
+        taskClient.createTask(
+        		driverId,
+            saved.getDispatchID(),
+            "Accept assigned load for dispatch " + saved.getDispatchID(),
+            null
+        );
+
+        // ✅ NOTIFICATION → DRIVER
+        notificationClient.notifyUser(
+        		driverId,
+            saved.getDispatchID(),
+            "You have been assigned a load. Please accept the dispatch.",
+            "Pickup"
+        );
+
+        // ✅ NOTIFICATION → ADMIN
+        notificationClient.notifyUser(
+        		adminId,
+            saved.getDispatchID(),
+            "Dispatch " + saved.getDispatchID() + " assigned to driver",
+            "Pickup"
+        );
+
+
+        return convertToDto(saved);
+    }
+
 
     // ================= FETCH BY ID =================
  
@@ -215,25 +271,57 @@ public class DispatchServiceImpl implements DispatchService {
     // ================= UPDATE =================
  
     @Override
- 
     public DispatchDTO updateDispatch(Long dispatchID, DispatchDTO dto) {
 
         Dispatch dispatch = findDispatch(dispatchID);
+        Long oldDriverId = dispatch.getAssignedDriverID();
 
-        if (dto.getAssignedDriverID() != null)
- 
+        if (dto.getAssignedDriverID() != null) {
             dispatch.setAssignedDriverID(dto.getAssignedDriverID());
+        }
 
-        if (dto.getAssignedBy() != null)
- 
+        if (dto.getAssignedBy() != null) {
             dispatch.setAssignedBy(dto.getAssignedBy());
+        }
 
-        if (dto.getStatus() != null)
- 
+        if (dto.getStatus() != null) {
             dispatch.setStatus(dto.getStatus());
+        }
 
-        return convertToDto(dispatchRepository.save(dispatch));
- 
+        Dispatch updated = dispatchRepository.save(dispatch);
+
+        Long oldDriverID = dispatch.getAssignedDriverID();
+
+        if (dto.getAssignedDriverID() != null &&
+            !dto.getAssignedDriverID().equals(oldDriverId)) {
+
+            // Notify old driver
+            if (oldDriverID != null) {
+                notificationClient.notifyUser(
+                    oldDriverId,
+                    dispatch.getDispatchID(),
+                    "Dispatch has been reassigned",
+                    "Exception"
+                );
+            }
+
+            // ✅ Task + notification for NEW DRIVER
+            taskClient.createTask(
+                dto.getAssignedDriverID(),
+                dispatch.getDispatchID(),
+                "Accept reassigned dispatch " + dispatch.getDispatchID(),
+                null
+            );
+
+            notificationClient.notifyUser(
+                dto.getAssignedDriverID(),
+                dispatch.getDispatchID(),
+                "You have been reassigned a dispatch",
+                "Pickup"
+            );
+        }
+
+        return convertToDto(updated);
     }
 
     // ================= DELETE =================

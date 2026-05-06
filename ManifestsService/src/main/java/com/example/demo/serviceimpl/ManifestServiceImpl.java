@@ -11,7 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
  
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
- 
+
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.LoadDTO;
 
 import com.example.demo.dto.LoadResponseDTO;
@@ -50,6 +53,16 @@ public class ManifestServiceImpl implements ManifestService {
     @Autowired
 
     private RestTemplate restTemplate;
+    
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+    
+    @Autowired
+    private RoleResolverClient roleResolverClient;
+
  
     @Value("${file.upload-dir}")
 
@@ -241,22 +254,46 @@ public class ManifestServiceImpl implements ManifestService {
     // ================= UPDATE =================
 
     @Override
-
     public ManifestDTO update(Long manifestID, ManifestDTO manifestDTO) {
- 
+
         Manifest manifest = findManifest(manifestID);
- 
+
         if (manifestDTO.getWarehouseID() != null)
-
             manifest.setWarehouseID(manifestDTO.getWarehouseID());
- 
+
         if (manifestDTO.getItemsJSON() != null)
-
             manifest.setItemsJSON(manifestDTO.getItemsJSON());
- 
- 
-        return convertToDTO(manifestRepository.save(manifest));
 
+        Manifest updated = manifestRepository.save(manifest);
+
+        Long dispatcherUserId = roleResolverClient.getUserByRole("Dispatcher");
+        Long driverId = roleResolverClient.getUserByRole("Driver");
+
+        notificationClient.notifyUser(
+            dispatcherUserId,                 // ✅ Long userId
+            updated.getManifestID(),
+            "Manifest prepared for load " + updated.getLoadID(),
+            "Pickup"
+        );
+        //notify admin
+        notificationClient.notifyUser(
+                dispatcherUserId,                 // ✅ Long userId
+                updated.getManifestID(),
+                "Manifest prepared for load " + updated.getLoadID(),
+                "Pickup"
+            );
+        
+        
+
+        //  Task for Driver to receive handover
+        taskClient.createTask(
+            driverId,
+            updated.getManifestID(),
+            "Receive handover for manifest",
+            null
+        );
+
+        return convertToDTO(updated);
     }
  
     // ================= DELETE =================
@@ -410,8 +447,27 @@ public class ManifestServiceImpl implements ManifestService {
         Manifest manifest = convertToEntity(dto);
 
         manifest.setManifestURI(uri);
+        
+        ManifestDTO saved= convertToDTO(manifestRepository.save(manifest));
 
-        return convertToDTO(manifestRepository.save(manifest));
+       //  ADD BELOW
+         notificationClient.notifyUser(
+             dto.getWarehouseID(),              // Warehouse user
+             saved.getManifestID(),
+             "Manifest created for load " + saved.getLoadID(),
+             "Pickup"
+         );
+
+         Long adminId= roleResolverClient.getUserByRole("Admin");
+         //notify admin also
+         notificationClient.notifyUser(
+                 adminId,              // Warehouse user
+                 saved.getManifestID(),
+                 "Manifest created for load " + saved.getLoadID(),
+                 "Pickup"
+             );
+
+        return saved;
 
     }
 

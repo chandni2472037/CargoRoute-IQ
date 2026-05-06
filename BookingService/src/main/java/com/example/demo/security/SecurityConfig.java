@@ -33,7 +33,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
                 .requestMatchers("/cargoRoute/booking/**").permitAll()
-                .requestMatchers("/cargoRoute/shipper/**").permitAll()
+                .requestMatchers("/cargoRoute/shipper/**").hasAnyRole("ADMIN", "SHIPPER")
 
 
                 // Everything else

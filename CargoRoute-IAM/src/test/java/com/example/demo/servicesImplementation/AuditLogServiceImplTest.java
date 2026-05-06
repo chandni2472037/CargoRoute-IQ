@@ -26,6 +26,7 @@ import com.example.demo.DTO.AuditLogDTO;
 import com.example.demo.entities.AuditLog;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.repositories.AuditLogRepository;
+import com.example.demo.serviceimpl.AuditLogServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class AuditLogServiceImplTest {

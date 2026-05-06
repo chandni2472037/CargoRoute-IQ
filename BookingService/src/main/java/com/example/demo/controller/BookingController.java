@@ -29,7 +29,7 @@ public class BookingController {
     private BookingService service;
 
     @PostMapping("/addBooking")
-    @PreAuthorize("hasAnyRole('Shipper','Admin')")
+    @PreAuthorize("hasAnyRole('SHIPPER','ADMIN')")
     public ResponseEntity<Map<String, String>> addBooking(@RequestBody BookingDTO b) {
         service.createBooking(b);
         return new ResponseEntity<>(Map.of("message", "Booking created successfully."), HttpStatus.CREATED);
@@ -52,7 +52,7 @@ public class BookingController {
     }
 
     @PatchMapping("/updateBookingStatus/{id}")
-    @PreAuthorize("hasAnyRole('Dispatcher','Driver')")
+    @PreAuthorize("hasAnyRole('DISPATCHER','DRIVER')")
     public ResponseEntity<Map<String, String>> modifyBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String statusValue = body.get("status");
         if (statusValue == null || statusValue.isBlank()) {
@@ -78,7 +78,7 @@ public class BookingController {
     }
 
     @PostMapping("/importBookings")
-    @PreAuthorize("hasAnyRole('Shipper','Admin')")
+    @PreAuthorize("hasAnyRole('SHIPPER','ADMIN')")
     public ResponseEntity<Map<String, Object>> importBookings(@RequestParam("file") MultipartFile file) {
         try {
             Map<String, Object> result = service.importBookings(file);

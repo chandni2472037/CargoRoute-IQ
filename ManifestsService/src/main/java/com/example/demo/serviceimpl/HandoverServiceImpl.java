@@ -9,7 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import org.springframework.web.client.RestTemplate;
- 
+
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.HandoverDTO;
 
 import com.example.demo.dto.HandoverResponseDTO;
@@ -39,6 +42,16 @@ public class HandoverServiceImpl implements HandoverService {
     @Autowired
 
     private RestTemplate restTemplate;
+    
+    
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+
+    @Autowired
+    private RoleResolverClient roleResolverClient;
  
     private static final String MANIFEST_SERVICE_URL =
 
@@ -141,10 +154,37 @@ public class HandoverServiceImpl implements HandoverService {
     @Override
 
     public HandoverDTO create(HandoverDTO handoverDTO) {
+    	
+    	
 
-        return convertToDTO(
+Handover saved =
+            handoverRepository.save(convertToEntity(handoverDTO));
 
-                handoverRepository.save(convertToEntity(handoverDTO)));
+    Long dispatcherUserId =
+            roleResolverClient.getUserByRole("Dispatcher");
+    Long adminId =
+            roleResolverClient.getUserByRole("Admin");
+
+notificationClient.notifyUser(
+        dispatcherUserId,
+        saved.getHandoverID(),
+        "Handover completed for manifest " +
+            saved.getManifest().getManifestID(),
+        "Delivery"
+    );
+
+
+notificationClient.notifyUser(
+        adminId,
+        saved.getHandoverID(),
+        "Handover completed for manifest " +
+            saved.getManifest().getManifestID(),
+        "Delivery"
+    );
+
+
+
+        return convertToDTO(saved);
 
     }
  

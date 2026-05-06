@@ -1,5 +1,7 @@
 package com.example.demo.dto;
 
+import java.time.LocalDateTime;
+
 public class AuditLogDTO {
 
     private Long auditID;
@@ -8,22 +10,61 @@ public class AuditLogDTO {
     private String resourceType;
     private Long resourceID;
     private String details;
+    private LocalDateTime timestamp; // ✅ ADDED
 
-    public Long getAuditID() { return auditID; }
-    public void setAuditID(Long auditID) { this.auditID = auditID; }
+    public Long getAuditID() {
+        return auditID;
+    }
 
-    public Long getUserID() { return userID; }
-    public void setUserID(Long userID) { this.userID = userID; }
+    public void setAuditID(Long auditID) {
+        this.auditID = auditID;
+    }
 
-    public String getAction() { return action; }
-    public void setAction(String action) { this.action = action; }
+    public Long getUserID() {
+        return userID;
+    }
 
-    public String getResourceType() { return resourceType; }
-    public void setResourceType(String resourceType) { this.resourceType = resourceType; }
+    public void setUserID(Long userID) {
+        this.userID = userID;
+    }
 
-    public Long getResourceID() { return resourceID; }
-    public void setResourceID(Long resourceID) { this.resourceID = resourceID; }
+    public String getAction() {
+        return action;
+    }
 
-    public String getDetails() { return details; }
-    public void setDetails(String details) { this.details = details; }
+    public void setAction(String action) {
+        this.action = action;
+    }
+
+    public String getResourceType() {
+        return resourceType;
+    }
+
+    public void setResourceType(String resourceType) {
+        this.resourceType = resourceType;
+    }
+
+    public Long getResourceID() {
+        return resourceID;
+    }
+
+    public void setResourceID(Long resourceID) {
+        this.resourceID = resourceID;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public void setDetails(String details) {
+        this.details = details;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
 }

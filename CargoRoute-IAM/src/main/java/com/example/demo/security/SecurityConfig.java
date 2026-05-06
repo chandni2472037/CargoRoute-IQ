@@ -42,11 +42,12 @@ public class SecurityConfig {
 
 
                 // Internal calls
-                .requestMatchers("/cargoRoute//internal/**").permitAll()
+                .requestMatchers("/cargoRoute/internal/**").permitAll()
 
                 // Admin only
                 .requestMatchers("/cargoRoute/users/**").hasRole("Admin")
                 .requestMatchers("/cargoRoute/auditlogs/**").hasRole("Admin")
+                
 
                 // Everything else
                 .anyRequest().authenticated()

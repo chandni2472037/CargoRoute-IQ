@@ -20,7 +20,7 @@ public class ShipperController {
     private ShipperService service;
 
     @PostMapping("/addShipper")
-    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> addShipper(@RequestBody ShipperDTO s) {
         service.createShipper(s);
         return new ResponseEntity<>(Map.of("message", "Shipper created successfully."), HttpStatus.CREATED);
@@ -41,7 +41,7 @@ public class ShipperController {
     }
 
     @PutMapping("/updateShipper/{id}")
-    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> modifyShipper(@PathVariable Long id, @RequestBody ShipperDTO updated) {
         updated.setShipperID(id);
         service.createShipper(updated);

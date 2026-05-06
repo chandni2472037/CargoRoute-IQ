@@ -1,7 +1,10 @@
 package com.example.demo.repositories;
 
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.example.demo.entities.User;
+import com.example.demo.enums.UserRole;
 
 /**
  * UserRepository
@@ -17,4 +20,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return User entity
      */
     User findByEmail(String email);
+    
+
+ // ✅ REQUIRED for role resolution
+    Optional<User> findFirstByRoleOrderByUserIDAsc(UserRole role);
+
 }

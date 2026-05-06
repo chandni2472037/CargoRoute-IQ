@@ -36,9 +36,9 @@ class UserControllerTest {
     @Test
     void saveUser_returnsCreatedResponse() {
         UserDTO request = new UserDTO(1L, "A", "Admin", "a@mail.com", "100", "Active", "pwd");
-        when(userService.saveUser(request)).thenReturn(request);
+        when(userService.createUser(request)).thenReturn(request);
 
-        ResponseEntity<UserDTO> response = controller.saveUser(request);
+        ResponseEntity<UserDTO> response = controller.createUser(request);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals("A", response.getBody().getName());
@@ -71,9 +71,9 @@ class UserControllerTest {
     @MethodSource("userCases")
     void saveUser_parameterizedCases(int i) {
         UserDTO request = new UserDTO((long) i, "User" + i, "Driver", "u" + i + "@mail.com", "9" + i, "Active", "pwd");
-        when(userService.saveUser(request)).thenReturn(request);
+        when(userService.createUser(request)).thenReturn(request);
 
-        ResponseEntity<UserDTO> response = controller.saveUser(request);
+        ResponseEntity<UserDTO> response = controller.createUser(request);
 
         assertNotNull(response.getBody());
         assertEquals("User" + i, response.getBody().getName());

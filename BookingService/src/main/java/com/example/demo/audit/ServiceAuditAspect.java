@@ -5,14 +5,13 @@ import java.lang.reflect.Method;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.example.demo.clients.AuditLogClient;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 @Aspect
 @Component
@@ -25,191 +24,314 @@ public class ServiceAuditAspect {
     }
 
     @AfterReturning(
-        pointcut = "execution(* com.example.demo.serviceimpl..*.create*(..)) || " +
-            "execution(* com.example.demo.serviceimpl..*.save*(..)) || " +
-            "execution(* com.example.demo.serviceimpl..*.insert*(..)) || " +
+        pointcut =
+            "execution(* com.example.demo.serviceimpl..*.create*(..)) || " +
             "execution(* com.example.demo.serviceimpl..*.update*(..)) || " +
-            "execution(* com.example.demo.serviceimpl..*.edit*(..)) || " +
             "execution(* com.example.demo.serviceimpl..*.delete*(..)) || " +
-            "execution(* com.example.demo.serviceimpl..*.remove*(..)) || " +
             "execution(* com.example.demo.serviceImpl..*.create*(..)) || " +
-            "execution(* com.example.demo.serviceImpl..*.save*(..)) || " +
-            "execution(* com.example.demo.serviceImpl..*.insert*(..)) || " +
-            "execution(* com.example.demo.serviceImpl..*.update*(..)) || " +
-            "execution(* com.example.demo.serviceImpl..*.edit*(..)) || " +
-            "execution(* com.example.demo.serviceImpl..*.delete*(..)) || " +
-            "execution(* com.example.demo.serviceImpl..*.remove*(..)) || " +
-            "execution(* com.example.demo.ServiceImpl..*.create*(..)) || " +
-            "execution(* com.example.demo.ServiceImpl..*.save*(..)) || " +
-            "execution(* com.example.demo.ServiceImpl..*.insert*(..)) || " +
             "execution(* com.example.demo.ServiceImpl..*.update*(..)) || " +
-            "execution(* com.example.demo.ServiceImpl..*.edit*(..)) || " +
-            "execution(* com.example.demo.ServiceImpl..*.delete*(..)) || " +
-            "execution(* com.example.demo.ServiceImpl..*.remove*(..)) || " +
+            "execution(* com.example.demo.serviceimpl..*.delete*(..)) || "+
             "execution(* com.example.demo.servicesImplementation..*.create*(..)) || " +
-            "execution(* com.example.demo.servicesImplementation..*.save*(..)) || " +
-            "execution(* com.example.demo.servicesImplementation..*.insert*(..)) || " +
             "execution(* com.example.demo.servicesImplementation..*.update*(..)) || " +
-            "execution(* com.example.demo.servicesImplementation..*.edit*(..)) || " +
-            "execution(* com.example.demo.servicesImplementation..*.delete*(..)) || " +
-            "execution(* com.example.demo.servicesImplementation..*.remove*(..))",
+            "execution(* com.example.demo.servicesImplementation..*.delete*(..))",
         returning = "result"
     )
-    public void afterServiceSuccess(JoinPoint joinPoint, Object result) {
-        Long userId = getUserIdFromRequest();
-        Long resourceId = extractResourceId(result, joinPoint.getArgs());
-        String action = mapAction(joinPoint.getSignature().getName());
-        String resourceType = mapResourceType(joinPoint.getTarget().getClass().getSimpleName());
+    public void afterSuccess(JoinPoint jp, Object result) {
 
-        if (!isMutatingAction(action)) {
-            return;
-        }
+        String action = resolveAction(jp.getSignature().getName());
+        if (!isMutating(action)) return;
 
-        if (userId == null) {
-            userId = 0L;
-        }
-        if (resourceId == null) {
-            resourceId = 0L;
-        }
+        Long userId = getUserId();
+        String userName = getUserName();
+        String resourceType = resolveResourceType(jp.getTarget().getClass().getSimpleName());
+        Long resourceId = resolveResourceId(result, jp.getArgs());
+
+        String details =
+            buildDetails(action, resourceType, resourceId, userName, result);
 
         auditLogClient.log(
             userId,
             action,
             resourceType,
             resourceId,
-            buildDetails(action, resourceType, resourceId, joinPoint, result)
+            details
         );
     }
-
-    private Long extractResourceId(Object result, Object[] args) {
-        Long fromResult = extractIdFromObject(result);
-        if (fromResult != null) {
-            return fromResult;
-        }
-        return extractResourceId(args);
-    }
-
-    private Long getUserIdFromRequest() {
-        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
-        if (attributes instanceof ServletRequestAttributes servletAttributes) {
-            HttpServletRequest request = servletAttributes.getRequest();
-            Object userId = request.getAttribute("userId");
-            if (userId instanceof Long value) {
-                return value;
-            }
-            if (userId instanceof Integer value) {
-                return value.longValue();
-            }
-            if (userId instanceof String value) {
-                try {
-                    return Long.valueOf(value);
-                } catch (NumberFormatException ignored) {
-                    return null;
-                }
-            }
-        }
-        return null;
-    }
-
-    private Long extractResourceId(Object[] args) {
-        if (args == null) {
-            return null;
-        }
-        for (Object arg : args) {
-            Long fromObject = extractIdFromObject(arg);
-            if (fromObject != null) {
-                return fromObject;
-            }
-            if (arg instanceof Long value) {
-                return value;
-            }
-            if (arg instanceof Integer value) {
-                return value.longValue();
-            }
-        }
-        return null;
-    }
-
-    private String mapAction(String methodName) {
-        String m = methodName.toLowerCase();
-        if (m.startsWith("create") || m.startsWith("save") || m.startsWith("insert") || m.startsWith("register")) {
-            return "CREATE";
-        }
-        if (m.startsWith("update") || m.startsWith("edit")) {
-            return "UPDATE";
-        }
-        if (m.startsWith("delete") || m.startsWith("remove")) {
-            return "DELETE";
-        }
+    
+    private String resolveAction(String method) {
+        method = method.toLowerCase();
+        if (method.startsWith("create")) return "CREATE";
+        if (method.startsWith("update")) return "UPDATE";
+        if (method.startsWith("delete")) return "DELETE";
         return "READ";
     }
 
-    private String mapResourceType(String className) {
-        return className
-                .replace("ServiceImpl", "")
-                .replace("serviceImpl", "")
-                .replace("Serviceimpl", "")
-                .replace("Service", "")
-                .toUpperCase();
+    private boolean isMutating(String action) {
+        return action.equals("CREATE") ||
+               action.equals("UPDATE") ||
+               action.equals("DELETE");
     }
-
-    private boolean isMutatingAction(String action) {
-        return "CREATE".equals(action) || "UPDATE".equals(action) || "DELETE".equals(action);
+    
+    
+    private String resolveResourceType(String className) {
+        return className.replace("ServiceImpl", "").toUpperCase();
     }
+    
+    private Long getUserId() {
+        RequestAttributes ra = RequestContextHolder.getRequestAttributes();
+        if (ra instanceof ServletRequestAttributes sra) {
 
-    private Long extractIdFromObject(Object source) {
-        if (source == null) {
-            return null;
-        }
-        Method[] methods = source.getClass().getMethods();
-        for (Method method : methods) {
-            String name = method.getName();
-            if (method.getParameterCount() != 0 || !name.startsWith("get")) {
-                continue;
-            }
-            if (!(name.endsWith("ID") || name.endsWith("Id"))) {
-                continue;
-            }
-            try {
-                Object value = method.invoke(source);
-                if (value instanceof Number number) {
-                    return number.longValue();
+            // ✅ Primary: From request (JWT filter)
+            Object id = sra.getRequest().getAttribute("userId");
+            if (id instanceof Number n) return n.longValue();
+
+            // ✅ Fallback: From SecurityContext principal (username → system user)
+            if (SecurityContextHolder.getContext().getAuthentication() != null) {
+                Object principal =
+                    SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+                if (principal instanceof String username) {
+                    // system / admin operation
+                    return 1L;
                 }
-            } catch (Exception ignored) {
-                // ignore and continue searching
+            }
+        }
+        return 1L;
+    }
+
+    private String getUserName() {
+        RequestAttributes ra = RequestContextHolder.getRequestAttributes();
+        if (ra instanceof ServletRequestAttributes sra) {
+            Object name = sra.getRequest().getAttribute("userName");
+            return name != null ? name.toString() : "SYSTEM";
+        }
+        return "SYSTEM";
+    }
+    
+    private Long resolveResourceId(Object result, Object[] args) {
+        Long id = extractId(result);
+        if (id != null) return id;
+        if (args != null) {
+            for (Object arg : args) {
+                id = extractId(arg);
+                if (id != null) return id;
             }
         }
         return null;
     }
 
-    private String buildDetails(String action, String resourceType, Long resourceId, JoinPoint joinPoint, Object result) {
-        StringBuilder details = new StringBuilder()
-                .append(action)
-                .append(" ")
-                .append(resourceType)
-                .append(" resourceId=")
-                .append(resourceId)
-                .append(" via ")
-                .append(joinPoint.getSignature().toShortString());
-
-        Object snapshot = result;
-        if (snapshot == null) {
-            Object[] args = joinPoint.getArgs();
-            if (args != null) {
-                for (Object arg : args) {
-                    if (arg != null) {
-                        snapshot = arg;
-                        break;
-                    }
-                }
+    private Long extractId(Object obj) {
+        if (obj == null) return null;
+        for (Method m : obj.getClass().getMethods()) {
+            if (m.getName().matches("get.*Id|get.*ID") &&
+                m.getParameterCount() == 0) {
+                try {
+                    Object v = m.invoke(obj);
+                    if (v instanceof Number n) return n.longValue();
+                } catch (Exception ignored) {}
             }
         }
+        return null;
+    }
+    
+    private String buildDetails(
+            String action,
+            String resourceType,
+            Long id,
+            String userName,
+            Object obj
+    ) {
+        StringBuilder sb = new StringBuilder();
 
-        if (snapshot != null) {
-            // WHY: include a lightweight payload snapshot for traceability.
-            details.append(" | payload=").append(String.valueOf(snapshot));
+        sb.append(resourceType)
+          .append(" ")
+          .append(action.toLowerCase())
+          .append("d");
+
+        if (id != null) sb.append(" [id=").append(id).append("]");
+        if (userName != null) sb.append(" by ").append(userName);
+
+        appendBusinessFields(sb, resourceType, obj);
+        return sb.toString();
+    }
+    
+    private void appendBusinessFields(
+            StringBuilder sb,
+            String resourceType,
+            Object obj
+    ) {
+        if (obj == null) return;
+
+        switch (resourceType) {
+
+            /* ====================== 4.1 IAM ====================== */
+
+            case "USER" -> {
+                tryAppend(sb, obj, "getName", "name");
+                tryAppend(sb, obj, "getRole", "role");
+                tryAppend(sb, obj, "getEmail", "email");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "AUDITLOG" -> {
+                tryAppend(sb, obj, "getAction", "action");
+                tryAppend(sb, obj, "getResourceType", "resourceType");
+            }
+
+            /* ====================== 4.2 BOOKING ====================== */
+
+            case "BOOKING" -> {
+                tryAppend(sb, obj, "getShipperID", "shipperId");
+                tryAppend(sb, obj, "getOriginSiteID", "originSite");
+                tryAppend(sb, obj, "getDestinationSiteID", "destinationSite");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "SHIPPER" -> {
+                tryAppend(sb, obj, "getName", "name");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            /* ====================== 4.3 VEHICLE ====================== */
+
+            case "VEHICLE" -> {
+                tryAppend(sb, obj, "getRegNumber", "regNumber");
+                tryAppend(sb, obj, "getType", "type");
+                tryAppend(sb, obj, "getDriverID", "driverId");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "VEHICLEAVAILABILITY" -> {
+                tryAppend(sb, obj, "getVehicleID", "vehicleId");
+                tryAppend(sb, obj, "getDate", "date");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            /* ====================== 4.4 LOAD / ROUTING ====================== */
+
+            case "LOAD" -> {
+                tryAppend(sb, obj, "getLoadCode", "loadCode");
+                tryAppend(sb, obj, "getVehicleID", "vehicleId");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "ROUTE" -> {
+                tryAppend(sb, obj, "getLoadID", "loadId");
+                tryAppend(sb, obj, "getDistanceKm", "distanceKm");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "ROUTINGRULE" -> {
+                tryAppend(sb, obj, "getName", "ruleName");
+                tryAppend(sb, obj, "getPriority", "priority");
+                tryAppend(sb, obj, "getActive", "active");
+            }
+
+            /* ====================== 4.5 DISPATCH ====================== */
+
+            case "DISPATCH" -> {
+                tryAppend(sb, obj, "getLoadID", "loadId");
+                tryAppend(sb, obj, "getAssignedDriverID", "driverId");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "DRIVERACK" -> {
+                tryAppend(sb, obj, "getDispatchID", "dispatchId");
+                tryAppend(sb, obj, "getDriverID", "driverId");
+                tryAppend(sb, obj, "getAckAt", "ackAt");
+            }
+
+            /* ====================== 4.6 MANIFEST / DELIVERY ====================== */
+
+            case "MANIFEST" -> {
+                tryAppend(sb, obj, "getLoadID", "loadId");
+                tryAppend(sb, obj, "getWarehouseID", "warehouseId");
+            }
+
+            case "HANDOVER" -> {
+                tryAppend(sb, obj, "getManifestID", "manifestId");
+                tryAppend(sb, obj, "getReceivedBy", "receivedBy");
+            }
+
+            case "PROOFOFDELIVERY" -> {
+                tryAppend(sb, obj, "getBookingID", "bookingId");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            /* ====================== 4.7 BILLING ====================== */
+
+            case "TARIFF" -> {
+                tryAppend(sb, obj, "getServiceType", "serviceType");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "BILLINGLINE" -> {
+                tryAppend(sb, obj, "getBookingID", "bookingId");
+                tryAppend(sb, obj, "getLoadID", "loadId");
+                tryAppend(sb, obj, "getAmount", "amount");
+            }
+
+            case "INVOICE" -> {
+                tryAppend(sb, obj, "getShipperID", "shipperId");
+                tryAppend(sb, obj, "getTotalAmount", "amount");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            /* ====================== 4.8 EXCEPTIONS / CLAIMS ====================== */
+
+            case "EXCEPTION", "EXCEPTIONRECORD" -> {
+                tryAppend(sb, obj, "getBookingId", "bookingId");
+                tryAppend(sb, obj, "getType", "type");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "CLAIM" -> {
+                tryAppend(sb, obj, "getExceptionID", "exceptionId");
+                tryAppend(sb, obj, "getAmountClaimed", "amount");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            /* ====================== 4.9 REPORT / KPI ====================== */
+
+            case "REPORT" -> {
+                tryAppend(sb, obj, "getScope", "scope");
+                tryAppend(sb, obj, "getGeneratedBy", "generatedBy");
+            }
+
+            case "KPI" -> {
+                tryAppend(sb, obj, "getName", "name");
+                tryAppend(sb, obj, "getCurrentValue", "value");
+            }
+
+            /* ====================== 4.10 NOTIFICATION / TASK ====================== */
+
+            case "NOTIFICATION" -> {
+                tryAppend(sb, obj, "getCategory", "category");
+                tryAppend(sb, obj, "getStatus", "status");
+            }
+
+            case "TASK" -> {
+                tryAppend(sb, obj, "getAssignedTo", "assignedTo");
+                tryAppend(sb, obj, "getStatus", "status");
+                tryAppend(sb, obj, "getDueDate", "dueDate");
+            }
         }
+    }
 
-        return details.toString();
+    private void tryAppend(
+            StringBuilder sb,
+            Object obj,
+            String method,
+            String label
+    ) {
+        try {
+            Method m = obj.getClass().getMethod(method);
+            Object v = m.invoke(obj);
+            if (v != null)
+                sb.append(", ").append(label).append("=").append(v);
+        } catch (Exception ignored) {}
     }
 }
+
+
+
+

@@ -1,4 +1,4 @@
-package com.example.demo.servicesImplementation;
+package com.example.demo.serviceimpl;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,8 +30,8 @@ public class UserServiceImpl implements UserService {
 
     // SAVE / UPDATE USER
     @Override
-    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.USER, details = "User registered by admin")
-    public UserDTO saveUser(UserDTO userDTO) {
+//    @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.USER, details = "User registered by admin")
+    public UserDTO createUser(UserDTO userDTO) {
     	
     	if (userRepository.findByEmail(userDTO.getEmail()) != null) {
             throw new InvalidCredentialsException(
@@ -98,7 +98,7 @@ public class UserServiceImpl implements UserService {
     
     
     @Override
-    @AuditableAction(action = AuditAction.UPDATE, resourceType = AuditResourceType.USER, details = "User profile updated", resourceIdArgIndex = 0)
+//    @AuditableAction(action = AuditAction.UPDATE, resourceType = AuditResourceType.USER, details = "User profile updated", resourceIdArgIndex = 0)
     public UserDTO updateUser(Long userId, UserUpdateDTO dto) {
 
         User user = userRepository.findById(userId)

@@ -17,7 +17,10 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
  
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
- 
+
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.BookingDTO;
 
 import com.example.demo.dto.ProofOfDeliveryDTO;
@@ -56,6 +59,16 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
     @Autowired
 
     private RestTemplate restTemplate;
+    
+    
+    @Autowired
+    private NotificationClient notificationClient;
+
+    @Autowired
+    private TaskClient taskClient;
+
+    @Autowired
+    private RoleResolverClient roleResolverClient;
  
     private static final String BOOKING_SERVICE_URL =
 
@@ -122,6 +135,38 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
         pod.setPodURI(podUri);
 
         pod.setStatus(ProofOfDeliveryStatus.UPLOADED);
+        
+        
+        ProofOfDelivery saved = repository.save(pod);
+
+        Long dispatcherUserId = roleResolverClient.getUserByRole("Dispatcher");
+        Long shipperUserId = roleResolverClient.getUserByRole("Shipper"); // resolved by booking → shipper → user mapping
+        Long adminId = roleResolverClient.getUserByRole("Admin");
+        // Notify Dispatcher
+        notificationClient.notifyUser(
+            dispatcherUserId,
+            saved.getPodID(),
+            "Proof of Delivery uploaded for booking " + saved.getBookingID(),
+            "Delivery"
+        );
+        
+     // Notify admin
+        notificationClient.notifyUser(
+            adminId,
+            saved.getPodID(),
+            "Proof of Delivery uploaded for booking " + saved.getBookingID(),
+            "Delivery"
+        );
+
+        //  Notify Shipper (if resolvable)
+        if (shipperUserId != null) {
+            notificationClient.notifyUser(
+                shipperUserId,
+                saved.getPodID(),
+                "Your shipment has been delivered successfully",
+                "Delivery"
+            );
+        }
  
         return convertToDTO(repository.save(pod));
 
@@ -369,26 +414,66 @@ public class ProofOfDeliveryServiceImpl implements ProofOfDeliveryService {
     // ================= UPDATE =================
 
     @Override
-
     public ProofOfDeliveryDTO update(Long podID, ProofOfDeliveryDTO dto) {
- 
+
         ProofOfDelivery pod = findPod(podID);
- 
+
         if (dto.getReceivedBy() != null)
-
             pod.setReceivedBy(dto.getReceivedBy());
- 
+
         if (dto.getPodType() != null)
-
             pod.setPodType(dto.getPodType());
- 
+
         if (dto.getStatus() != null)
-
             pod.setStatus(dto.getStatus());
- 
-        return convertToDTO(repository.save(pod));
 
+        ProofOfDelivery updated = repository.save(pod);
+
+        Long dispatcherUserId = roleResolverClient.getUserByRole("Dispatcher");
+        Long adminId = roleResolverClient.getUserByRole("Admin");
+
+        // Normal update → Delivery notification
+        if (dto.getStatus() == ProofOfDeliveryStatus.UPLOADED) {
+
+            notificationClient.notifyUser(
+                dispatcherUserId,
+                updated.getPodID(),
+                "Proof of Delivery updated for booking " + updated.getBookingID(),
+                "Delivery"
+            );
+        }
+        
+        if (dto.getStatus() == ProofOfDeliveryStatus.UPLOADED) {
+
+            notificationClient.notifyUser(
+                adminId,
+                updated.getPodID(),
+                "Proof of Delivery updated for booking " + updated.getBookingID(),
+                "Delivery"
+            );
+        }
+
+        // Failure path → Exception + Task
+        if (dto.getStatus() == ProofOfDeliveryStatus.REJECTED) {
+
+            notificationClient.notifyUser(
+                dispatcherUserId,
+                updated.getPodID(),
+                "Delivery issue reported for booking " + updated.getBookingID(),
+                "Delivery"
+            );
+
+            taskClient.createTask(
+                dispatcherUserId,
+                updated.getPodID(),
+                "Investigate delivery failure for booking " + updated.getBookingID(),
+                null
+            );
+        }
+
+        return convertToDTO(updated);
     }
+
  
     // ================= DELETE =================
 

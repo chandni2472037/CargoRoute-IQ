@@ -30,6 +30,7 @@ import com.example.demo.exceptions.DuplicateEmailException;
 import com.example.demo.exceptions.InvalidCredentialsException;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.security.JwtUtil;
+import com.example.demo.serviceimpl.AuthServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {

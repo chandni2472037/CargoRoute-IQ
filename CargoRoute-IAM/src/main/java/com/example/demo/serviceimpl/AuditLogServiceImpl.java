@@ -1,4 +1,4 @@
-package com.example.demo.servicesImplementation;
+package com.example.demo.serviceimpl;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,10 +35,13 @@ public class AuditLogServiceImpl implements AuditLogService {
         log.setResourceType(dto.getResourceType());
         log.setResourceID(dto.getResourceID());
         log.setDetails(dto.getDetails());
+
+        // ✅ authoritative timestamp
         log.setTimestamp(LocalDateTime.now());
 
         return mapToDTO(repository.save(log));
     }
+    
 
     @Override
     public List<AuditLogDTO> getAllAuditLogs() {

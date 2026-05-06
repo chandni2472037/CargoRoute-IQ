@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.RoleResolverClient;
 import com.example.demo.clients.TaskClient;
 import com.example.demo.service.InvoiceService;
 import com.example.demo.dto.InvoiceDTO;
@@ -32,6 +34,9 @@ public class InvoiceServiceimpl implements InvoiceService {
 
     @Autowired
     private TaskClient taskClient;
+    
+    @Autowired
+    private RoleResolverClient roleResolverClient;
 
     // ================= DTO → ENTITY =================
     private Invoice toEntity(InvoiceDTO dto) {
@@ -64,20 +69,46 @@ public class InvoiceServiceimpl implements InvoiceService {
     // ================= CREATE =================
     @Override
     public InvoiceDTO save(InvoiceDTO invoice) {
+
         Invoice saved = repo.save(toEntity(invoice));
+
+        Long billingUserId =roleResolverClient.getUserByRole("BillingClerk");
+        Long adminId =roleResolverClient.getUserByRole("Admin");
+
+        //  Notify Shipper (informational)
         notificationClient.notifyUser(
-                saved.getShipperID(),
-                saved.getInvoiceID(),
-                "Invoice " + saved.getInvoiceID() + " generated and pending approval.",
-                "Invoice"
-        );
-        // WHY: billing approvals must be represented as tasks to ensure invoice review completion.
-        taskClient.createTask(
             saved.getShipperID(),
             saved.getInvoiceID(),
-            "Review and approve invoice " + saved.getInvoiceID() + ".",
-            saved.getPeriodEnd() != null ? saved.getPeriodEnd() : LocalDate.now()
+            "Invoice " + saved.getInvoiceID() + " has been generated.",
+            "Invoice"
         );
+
+        //  Notify Billing (actionable)
+        notificationClient.notifyUser(
+            billingUserId,
+            saved.getInvoiceID(),
+            "Invoice " + saved.getInvoiceID() + " generated and pending review.",
+            "Invoice"
+        );
+        
+        //  Notify Admin
+        notificationClient.notifyUser(
+            adminId,
+            saved.getInvoiceID(),
+            "Invoice " + saved.getInvoiceID() + " generated and pending review.",
+            "Invoice"
+        );
+
+        //  Task ONLY for Billing
+        taskClient.createTask(
+            billingUserId,
+            saved.getInvoiceID(),
+            "Review and finalize invoice " + saved.getInvoiceID(),
+            saved.getPeriodEnd() != null
+                ? saved.getPeriodEnd()
+                : LocalDate.now()
+        );
+
         return toDTO(saved);
     }
 
@@ -145,8 +176,8 @@ public class InvoiceServiceimpl implements InvoiceService {
 
         Invoice existing = repo.findById(id)
                 .orElseThrow(() ->
-                        new InvoiceNotFoundException(
-                                "Invoice not found with id: " + id)
+                    new InvoiceNotFoundException(
+                        "Invoice not found with id: " + id)
                 );
 
         existing.setShipperID(invoiceDTO.getShipperID());
@@ -157,19 +188,51 @@ public class InvoiceServiceimpl implements InvoiceService {
         existing.setStatus(invoiceDTO.getStatus());
 
         Invoice updated = repo.save(existing);
+
+        Long billingUserId =
+            roleResolverClient.getUserByRole("BillingClerk");
+
+        //  Notify Shipper
         notificationClient.notifyUser(
             updated.getShipperID(),
             updated.getInvoiceID(),
-            "Invoice " + updated.getInvoiceID() + " updated with status " + updated.getStatus() + ".",
+            "Invoice " + updated.getInvoiceID() +
+                " updated. Current status: " + updated.getStatus(),
             "Invoice"
         );
-        // WHY: invoice updates can affect settlement decisions, so they need explicit task follow-up.
-        taskClient.createTask(
-            updated.getShipperID(),
+
+        //  Notify Billing
+        notificationClient.notifyUser(
+            billingUserId,
             updated.getInvoiceID(),
-            "Reconcile updated invoice " + updated.getInvoiceID() + " with current status.",
-            updated.getPeriodEnd() != null ? updated.getPeriodEnd() : LocalDate.now()
+            "Invoice " + updated.getInvoiceID() +
+                " updated. Status requires attention.",
+            "Invoice"
         );
+        
+        Long adminId= roleResolverClient.getUserByRole("Admin");
+        
+        //  Notify Admin
+        notificationClient.notifyUser(
+            adminId,
+            updated.getInvoiceID(),
+            "Invoice " + updated.getInvoiceID() +
+                " updated. Status requires attention.",
+            "Invoice"
+        );
+
+        //  Task ONLY if invoice is not settled
+        if (!"PAID".equalsIgnoreCase(updated.getStatus())) {
+            taskClient.createTask(
+                billingUserId,
+                updated.getInvoiceID(),
+                "Reconcile updated invoice " + updated.getInvoiceID(),
+                updated.getPeriodEnd() != null
+                    ? updated.getPeriodEnd()
+                    : LocalDate.now()
+            );
+        }
+
         return toDTO(updated);
     }
 

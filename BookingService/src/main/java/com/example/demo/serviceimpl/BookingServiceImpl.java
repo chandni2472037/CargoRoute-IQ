@@ -1,5 +1,8 @@
 package com.example.demo.serviceimpl;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.BookingDTO;
 import com.example.demo.dto.ShipperDTO;
 import com.example.demo.entity.Booking;
@@ -16,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
@@ -30,6 +34,17 @@ import com.example.demo.exception.ResourceNotFoundException;
 @Service // Marks this class as a Spring-managed service component
 public class BookingServiceImpl implements BookingService {
 
+	
+	
+	@Autowired
+	private NotificationClient notificationClient;
+
+	@Autowired
+	private TaskClient taskClient;
+	
+	@Autowired
+	private RoleResolverClient roleResolverClient;
+	
     @Autowired
     private BookingRepository repo;
 
@@ -92,12 +107,72 @@ public class BookingServiceImpl implements BookingService {
         b.setCreatedByUserId(createdByUserId);
         Booking booking = convertToEntity(b);
         Booking saved = repo.save(booking);
-        return convertToDTO(saved);
+        
+        
+
+
+
+       BookingDTO result = convertToDTO(saved);
+
+    // ✅ Notification to Shipper
+    if (createdByUserId != null) {
+        notificationClient.notifyUser(
+            createdByUserId,
+            result.getBookingID(),
+            "Booking " + result.getBookingID() + " submitted successfully",
+            "Pickup"
+        );
+    }
+    
+    
+
+ //  Task for Dispatcher (planning)
+    Long dispatcherId = roleResolverClient.getUserByRole("Dispatcher"); // ⚠️ replace with lookup later
+    Long adminId = roleResolverClient.getUserByRole("Admin");
+     taskClient.createTask(
+         dispatcherId,
+         result.getBookingID(),
+         "Plan and consolidate booking " + result.getBookingID(),
+         null
+     );
+     
+
+     taskClient.createTask(
+         dispatcherId,               // ✅ correct assignee
+         saved.getBookingID(),
+         "Plan and consolidate booking " + saved.getBookingID(),
+         LocalDate.now().plusDays(1)
+     );
+
+     //  Notification to Dispatcher
+     notificationClient.notifyUser(
+         dispatcherId,
+         result.getBookingID(),
+         "New booking " + result.getBookingID() + " submitted for planning",
+         "Pickup"
+     );
+     //notification for admin
+     notificationClient.notifyUser(
+             adminId,
+             result.getBookingID(),
+             "New booking " + result.getBookingID() + " submitted for planning",
+             "Pickup"
+         );
+
+     return result;
+
     }
 
     // Fetch bookings: read-only/operational roles see all; Customer sees only their own
+    // Service-to-service calls (without auth) also get all bookings to support KPI reports
     public List<BookingDTO> getAllBookings() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        // If no authentication or anonymous user (service-to-service call), return all bookings
+        if (authentication == null || "anonymousUser".equals(authentication.getPrincipal())) {
+            return repo.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+        }
+        
         String role = jwtUtil.extractRole(authentication);
 
         if ("ADMIN".equalsIgnoreCase(role) || "DISPATCHER".equalsIgnoreCase(role) || "FLEETMANAGER".equalsIgnoreCase(role)
@@ -127,7 +202,22 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking with ID " + id + " not found"));
         booking.setStatus(status);
         Booking updated = repo.save(booking);
-        return convertToDTO(updated);
+        BookingDTO dto = convertToDTO(updated);
+        
+        
+
+    Long shipperUserId = booking.getCreatedByUserId();
+    if (shipperUserId != null) {
+        notificationClient.notifyUser(
+            shipperUserId,
+            dto.getBookingID(),
+            "Booking " + dto.getBookingID() + " status changed to " + status,
+            "Pickup"
+        );
+    }
+
+    return dto;
+
     }
 
     // Retrieve bookings by status

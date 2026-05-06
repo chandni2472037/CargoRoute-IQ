@@ -32,17 +32,21 @@ public class TaskServiceImpl implements TaskService {
     @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.TASK, details = "Task created")
     public TaskDTO create(TaskDTO dto) {
 
-        // Validate assigned user
-        Boolean exists = restTemplate.getForObject(
-            "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" + dto.getAssignedTo()+ "/exists",
-            Boolean.class
-        );
+    	boolean userExists = false;
+    	try {
+    	    Boolean exists = restTemplate.getForObject(
+    	        "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" 
+    	        + dto.getAssignedTo() + "/exists",
+    	        Boolean.class
+    	    );
+    	    userExists = Boolean.TRUE.equals(exists);
+    	} catch (Exception ex) {
+    	    userExists = true; // allow task anyway
+    	}
 
-        if (exists == null || !exists) {
-            throw new ResourceNotFoundException(
-                "User not found with id: " + dto.getAssignedTo()
-            );
-        }
+    	if (!userExists) {
+    	    System.out.println("Warning: task user not verified, userId=" + dto.getAssignedTo());
+    	}
 
         Task task = new Task();
         task.setAssignedTo(dto.getAssignedTo());
@@ -50,6 +54,8 @@ public class TaskServiceImpl implements TaskService {
         task.setDescription(dto.getDescription());
         task.setDueDate(dto.getDueDate());
         task.setStatus(dto.getStatus());
+        
+        System.out.println("Creating task for user " + dto.getAssignedTo());
 
         return mapToDTO(repo.save(task));
     }

@@ -21,6 +21,8 @@ import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ExceptionRepository;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.service.ExceptionService;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -43,6 +45,13 @@ public class ExceptionServiceImpl implements ExceptionService {
 
     @Autowired
     private NotificationClient notificationClient;
+    
+    
+    @Autowired
+    private TaskClient taskClient;
+
+    @Autowired
+    private RoleResolverClient roleResolverClient;
 
     @Override
     public ExceptionRecordDTO createException(ExceptionRecordDTO dto) {
@@ -99,13 +108,37 @@ public class ExceptionServiceImpl implements ExceptionService {
             exception.setReportedBy(userId); // always from auth context, never from frontend
             ExceptionRecord saved = repo.save(exception);
 
-            String notifMessage = String.format(
-                "Exception #%d reported for Booking #%d — Type: %s. Status: %s.",
-                saved.getExceptionID(), saved.getBookingId(),
-                saved.getType() != null ? saved.getType().name() : "N/A",
-                saved.getStatus() != null ? saved.getStatus().name() : "N/A"
-            );
-            notificationClient.notifyUser(userId, saved.getExceptionID(), notifMessage, "Exception");
+            Long opsUserId = roleResolverClient.getUserByRole("Dispatcher");
+            Long adminId = roleResolverClient.getUserByRole("Admin");
+
+         //  Notify Ops / Dispatcher
+         notificationClient.notifyUser(
+             opsUserId,
+             saved.getExceptionID(),
+             "New exception reported for Booking " + saved.getBookingId()
+                 + " — Type: " + saved.getType(),
+             "Exception"
+         );
+         
+     //  Notify Admin
+         notificationClient.notifyUser(
+             adminId,
+             saved.getExceptionID(),
+             "New exception reported for Booking " + saved.getBookingId()
+                 + " — Type: " + saved.getType(),
+             "Exception"
+         );
+
+         //  Task for Ops to investigate
+         taskClient.createTask(
+             opsUserId,
+             saved.getExceptionID(),
+             "Investigate exception for Booking " + saved.getBookingId()
+                 + " (" + saved.getType() + ")",
+             null
+         );
+
+            
 
             return entityToDto(saved);
         } catch (AccessDeniedException ex) {
@@ -191,17 +224,47 @@ public class ExceptionServiceImpl implements ExceptionService {
 
     @Override
     public ExceptionRecordDTO updateExceptionStatus(Long id, ExceptionStatus status) {
+
         ExceptionRecord exception = repo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Exception with ID " + id + " not found"));
+                .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                        "Exception with ID " + id + " not found")
+                );
+
         exception.setStatus(status);
         ExceptionRecord updated = repo.save(exception);
 
+        Long opsUserId = roleResolverClient.getUserByRole("Dispatcher");
+
+        //  Notify Reporter
         if (updated.getReportedBy() != null) {
-            String message = String.format(
-                "Exception #%d status updated to %s for Booking #%d.",
-                updated.getExceptionID(), status.name(), updated.getBookingId()
+            notificationClient.notifyUser(
+                updated.getReportedBy(),
+                updated.getExceptionID(),
+                "Exception #" + updated.getExceptionID()
+                    + " status updated to " + status,
+                "Exception"
             );
-            notificationClient.notifyUser(updated.getReportedBy(), updated.getExceptionID(), message, "Exception");
+        }
+
+        //  If not resolved → Ops must act
+        if (status != ExceptionStatus.RESOLVED) {
+
+            notificationClient.notifyUser(
+                opsUserId,
+                updated.getExceptionID(),
+                "Exception #" + updated.getExceptionID()
+                    + " requires attention. Current status: " + status,
+                "Exception"
+            );
+
+            taskClient.createTask(
+                opsUserId,
+                updated.getExceptionID(),
+                "Continue investigation for exception on Booking "
+                    + updated.getBookingId(),
+                null
+            );
         }
 
         return entityToDto(updated);

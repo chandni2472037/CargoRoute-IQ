@@ -23,9 +23,9 @@ public class UserController {
 
     // CREATE / UPDATE USER (ADMIN)
     @PostMapping("/register")
-    public ResponseEntity<UserDTO> saveUser(@RequestBody UserDTO usersDTO) {
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO usersDTO) {
 
-        UserDTO savedUser = userService.saveUser(usersDTO);
+        UserDTO savedUser = userService.createUser(usersDTO);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 

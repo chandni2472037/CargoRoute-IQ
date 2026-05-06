@@ -11,6 +11,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
 import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.LoadDTO;
 import com.example.demo.dto.RequiredResponseDTO;
@@ -38,6 +39,10 @@ public class LoadServiceImpl implements LoadService {
 
     @Autowired
     private TaskClient taskClient;
+    
+    @Autowired
+    private RoleResolverClient roleResolverClient;
+    
 
     @Override
     public List<RequiredResponseDTO> getAllLoads() {
@@ -46,31 +51,75 @@ public class LoadServiceImpl implements LoadService {
                 .map(load -> getLoadById(load.getLoadID())) // reuse enrichment logic
                 .collect(Collectors.toList());
     }
-
+    
+    
     @Override
     public LoadDTO createLoad(LoadDTO loadDTO) {
+
         Load load = dtoToEntity(loadDTO);
         Load saved = loadRepository.save(load);
 
+        Long dispatcherId = roleResolverClient.getUserByRole("Dispatcher");
+        Long adminId = roleResolverClient.getUserByRole("Admin");
+
+        // Notify Dispatcher (+ Admin via client)
         notificationClient.notifyUser(
-                getCurrentUserId(),
-                saved.getLoadID(),
-                "Load " + saved.getLoadCode() + " planned and pending dispatch approval.",
-                "Pickup"
-        );
-        // WHY: create an actionable item so pending dispatch approvals are tracked and not only notified.
-        taskClient.createTask(
-            getCurrentUserId(),
+            dispatcherId,
             saved.getLoadID(),
-            "Review and approve load " + saved.getLoadCode() + " for pickup planning.",
-            saved.getPlannedStart() != null ? saved.getPlannedStart().toLocalDate() : null
+            "Load " + saved.getLoadCode() + " planned and pending dispatch approval.",
+            "Pickup"
+        );
+        
+     // Notify Admin(+ Admin via client)
+        notificationClient.notifyUser(
+            adminId,
+            saved.getLoadID(),
+            "Load " + saved.getLoadCode() + " planned and pending dispatch approval.",
+            "Pickup"
+        );
+
+        //  Task: Dispatcher action required
+        taskClient.createTask(
+            dispatcherId,
+            saved.getLoadID(),
+            "Review and approve load " + saved.getLoadCode(),
+            saved.getPlannedStart() != null
+                ? saved.getPlannedStart().toLocalDate()
+                : null
         );
 
         return entityToDto(saved);
     }
 
+
+//    @Override
+//    public LoadDTO createLoad(LoadDTO loadDTO) {
+//        Load load = dtoToEntity(loadDTO);
+//        Load saved = loadRepository.save(load);
+//
+//        notificationClient.notifyUser(
+//                getCurrentUserId(),
+//                saved.getLoadID(),
+//                "Load " + saved.getLoadCode() + " planned and pending dispatch approval.",
+//                "Pickup"
+//        );
+//        // WHY: create an actionable item so pending dispatch approvals are tracked and not only notified.
+//        taskClient.createTask(
+//            getCurrentUserId(),
+//            saved.getLoadID(),
+//            "Review and approve load " + saved.getLoadCode() + " for pickup planning.",
+//            saved.getPlannedStart() != null ? saved.getPlannedStart().toLocalDate() : null
+//        );
+//
+//        return entityToDto(saved);
+//    }
+
+
+    
+    
     @Override
     public LoadDTO updateLoad(Long id, LoadDTO loadDTO) {
+
         Load load = loadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Load not found with id: " + id));
 
@@ -85,15 +134,23 @@ public class LoadServiceImpl implements LoadService {
 
         Load updated = loadRepository.save(load);
 
-        String category = "Delivery";
-        String message = "Load " + updated.getLoadCode() + " updated with status " + updated.getStatus() + ".";
-        notificationClient.notifyUser(getCurrentUserId(), updated.getLoadID(), message, category);
-        // WHY: when load details/status change, dispatch must explicitly re-check execution readiness.
-        taskClient.createTask(
-            getCurrentUserId(),
+        Long dispatcherId = roleResolverClient.getUserByRole("Dispatcher");
+
+        // ✅ Still Pickup (NOT Delivery)
+        notificationClient.notifyUser(
+            dispatcherId,
             updated.getLoadID(),
-            "Re-validate delivery execution for load " + updated.getLoadCode() + ".",
-            updated.getPlannedEnd() != null ? updated.getPlannedEnd().toLocalDate() : null
+            "Load " + updated.getLoadCode() + " updated. Re-validation required.",
+            "Pickup"
+        );
+
+        taskClient.createTask(
+            dispatcherId,
+            updated.getLoadID(),
+            "Re-validate execution readiness for load " + updated.getLoadCode(),
+            updated.getPlannedEnd() != null
+                ? updated.getPlannedEnd().toLocalDate()
+                : null
         );
 
         return entityToDto(updated);

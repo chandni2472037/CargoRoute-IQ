@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.DTO.InternalUserDTO;
+import com.example.demo.entities.User;
+import com.example.demo.enums.UserRole;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.repositories.UserRepository;
 
@@ -40,5 +42,22 @@ public class InternalUserController {
             );
     }
 
+    
+    @GetMapping("/users/role/{role}/primary")
+    public Long getPrimaryUserByRole(@PathVariable String role) {
+
+        UserRole userRole = UserRole.from(role);  // ✅ SAFE conversion
+
+        return repo.findFirstByRoleOrderByUserIDAsc(userRole)
+                .map(User::getUserID)
+                .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                        "No primary user found for role: " + role
+                    )
+                );
+    }
+    
+    
+    
 
 }

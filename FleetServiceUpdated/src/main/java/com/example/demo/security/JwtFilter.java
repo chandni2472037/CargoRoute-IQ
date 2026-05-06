@@ -1,16 +1,17 @@
 package com.example.demo.security;
-
+ 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.Collections;
-
+ 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
@@ -21,28 +22,42 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
         String auth = request.getHeader("Authorization");
 
         if (auth != null && auth.startsWith("Bearer ")) {
             String token = auth.substring(7);
+            try {
+                String username = jwtUtil.extractUsername(token);
+                String role     = jwtUtil.extractRole(token);
+                Long userId     = jwtUtil.extractUserId(token);
 
-            String username = jwtUtil.extractUsername(token);
-            String role = jwtUtil.extractRole(token);
-            Long userId = jwtUtil.extractUserId(token);
+                if (username != null && role != null) {
 
-            request.setAttribute("userId", userId);
+                    // ✅ SET REQUEST CONTEXT FOR AUDIT
+                    request.setAttribute("userId", userId);
+                    request.setAttribute("userName", username);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            username,
-                            null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    username,
+                                    null,
+                                    Collections.singletonList(
+                                            new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())
+                                    )
+                            );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+
+            } catch (JwtException e) {
+                SecurityContextHolder.clearContext();
+            }
         }
 
         filterChain.doFilter(request, response);

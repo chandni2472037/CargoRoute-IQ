@@ -12,7 +12,7 @@ import com.example.demo.DTO.UserUpdateDTO;
 public interface UserService {
 
     // Creates or updates a user
-    UserDTO saveUser(UserDTO userDTO);
+    UserDTO createUser(UserDTO userDTO);
 
     // Fetches all users from the system
     List<UserDTO> getAllUsers();

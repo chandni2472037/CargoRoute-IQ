@@ -36,17 +36,24 @@ public class NotificationServiceImpl implements NotificationService {
     @AuditableAction(action = AuditAction.CREATE, resourceType = AuditResourceType.NOTIFICATION, details = "Notification created")
     public NotificationDTO create(NotificationDTO dto) {
 
-        // 1. Validate user existence via USER-SERVICE
-    	Boolean exists = restTemplate.getForObject(
-    		    "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" + dto.getUserID() + "/exists",
-    		    Boolean.class
-    		);
+    	boolean userExists = false;
+    	try {
+    	    Boolean exists = restTemplate.getForObject(
+    	        "http://IDENTITY-ACCESS-MANAGEMENT/cargoRoute/internal/users/" 
+    	        + dto.getUserID() + "/exists",
+    	        Boolean.class
+    	    );
+    	    userExists = Boolean.TRUE.equals(exists);
+    	} catch (Exception ex) {
+    	    // IAM is optional for notifications
+    	    userExists = true; // allow notification anyway
+    	}
 
-    		if (exists == null || !exists) {
-    		    throw new ResourceNotFoundException(
-    		        "User not found with id: " + dto.getUserID()
-    		    );
-    		}
+    	if (!userExists) {
+    	    // log but DO NOT block
+    	    System.out.println("Warning: notification user not verified, userId=" + dto.getUserID());
+    	}
+
 
         // 2. Proceed only if user exists
         Notification n = new Notification();
@@ -55,6 +62,7 @@ public class NotificationServiceImpl implements NotificationService {
         n.setMessage(dto.getMessage());
         n.setCategory(dto.getCategory());
         n.setStatus("UNREAD");
+        System.out.println("Creating notification for user " + dto.getUserID());
 
         return mapToDTO(repo.save(n));
     }

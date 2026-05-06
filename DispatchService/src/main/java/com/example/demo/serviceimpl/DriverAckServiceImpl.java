@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 
+import com.example.demo.clients.NotificationClient;
+import com.example.demo.clients.RoleResolverClient;
+import com.example.demo.clients.TaskClient;
 import com.example.demo.dto.DispatchResponseDTO;
 
 import com.example.demo.dto.DriverAckDTO;
@@ -43,11 +46,22 @@ public class DriverAckServiceImpl implements DriverAckService {
     @Autowired
 
     private DispatchService dispatchService;
+    
+    @Autowired
+    private NotificationClient notificationClient;
+    
+    
+
+    @Autowired
+    private TaskClient taskClient;
  
     @Autowired
 
     private DriverService driverService;
- 
+    
+    @Autowired
+    private RoleResolverClient roleResolverClient;
+  
     /* ================= CREATE ================= */
  
     @Override
@@ -81,8 +95,39 @@ public class DriverAckServiceImpl implements DriverAckService {
         ack.setNotes(dto.getNotes());
  
         DriverAck saved = driverAckRepository.save(ack);
+        
+
+
+     // ✅ Notify Dispatcher that driver acknowledged
+     DispatchResponseDTO dispatchResponse =
+             dispatchService.fetchByID(dto.getDispatchID());
+
+     String dispatcher = dispatchResponse.getDispatch().getAssignedBy();
+
+     if (dispatcher != null) {
+         notificationClient.notifyUser(
+             Long.valueOf(dispatcher), // if stored as String ID, adjust mapping
+             saved.getAckID(),
+             "Driver acknowledged dispatch " + dto.getDispatchID(),
+             "Delivery"
+         );
+     }
+     
+
+     Long adminId= roleResolverClient.getUserByRole("Admin");
+
+  //  NOTIFICATION → ADMIN
+  notificationClient.notifyUser(
+      adminId,
+      saved.getAckID(),
+      "Driver acknowledged dispatch " + dto.getDispatchID(),
+      "Delivery"
+  );
+
+
+
+     return convertToDTO(saved);
  
-        return convertToDTO(saved);
 
     }
  

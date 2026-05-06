@@ -30,6 +30,7 @@ import com.example.demo.entities.User;
 import com.example.demo.enums.UserRole;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.repositories.UserRepository;
+import com.example.demo.serviceimpl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
@@ -57,7 +58,7 @@ class UserServiceImplTest {
         when(passwordEncoder.encode("raw")).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenReturn(entity);
 
-        UserDTO result = service.saveUser(dto);
+        UserDTO result = service.createUser(dto);
 
         assertEquals("encoded", result.getPassword());
         assertEquals("A", result.getName());
